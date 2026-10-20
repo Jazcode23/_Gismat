@@ -1,0 +1,277 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Custom shadow for auth card */
+.custom-shadow {
+  box-shadow: 0 20px 45px -10px rgba(15, 31, 56, 0.08), 0 8px 18px -6px rgba(15, 31, 56, 0.04);
+}
+
+.map-grid-pattern {
+  background-color: #f1f3f4;
+  background-image: 
+    linear-gradient(to right, #e2e8f0 1px, transparent 1px),
+    linear-gradient(to bottom, #e2e8f0 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* GISMAT Logo Animations (Auth Screen) */
+@keyframes gismatEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes gismatFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+/* Logo container entrance animation on load */
+.gismat-logo-entrance {
+  animation: gismatEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Gentle continuous vertical floating */
+.gismat-logo-float {
+  animation: gismatFloat 4.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Interactive hover & touch scaling without deformation */
+.gismat-logo-interactive {
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), filter 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gismat-logo-interactive:hover,
+.gismat-logo-interactive:active,
+.gismat-logo-interactive.is-touched {
+  transform: scale(1.045);
+  filter: drop-shadow(0 14px 28px rgba(15, 31, 56, 0.14));
+}
+
+/* ==========================================================================
+   GISMAT – Login logo: layered, subtle animations
+   Solo afecta al logo grande del lado izquierdo del login (SVG con capas).
+   ========================================================================== */
+
+/* 1) Entrada: fade-in + pequeño desplazamiento hacia arriba */
+@keyframes gismatLoginLogoEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gismat-login-logo-entrance {
+  animation: gismatLoginLogoEntrance 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Todas las capas animadas comparten referencia al viewBox del SVG */
+.gismat-layer-river,
+.gismat-layer-river-flow,
+.gismat-layer-leaf,
+.gismat-layer-pin,
+.gismat-ripple-ring {
+  transform-box: view-box;
+  will-change: transform, opacity;
+}
+
+/* 2) Río: desplazamiento vertical muy suave + brillo que fluye por el cauce */
+@keyframes gismatRiverDrift {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(3px); }
+}
+
+@keyframes gismatRiverFlow {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: -100; }
+}
+
+@keyframes gismatRiverFlowFade {
+  0%   { opacity: 0; }
+  12%  { opacity: 0.5; }
+  80%  { opacity: 0.5; }
+  100% { opacity: 0; }
+}
+
+.gismat-layer-river {
+  animation: gismatRiverDrift 7s ease-in-out infinite;
+}
+
+/* Brillo tenue: invisible en reposo (y con reduced-motion) */
+.gismat-layer-river-flow {
+  opacity: 0;
+  stroke-dasharray: 14 86;
+  animation:
+    gismatRiverFlow 8s linear infinite,
+    gismatRiverFlowFade 8s linear infinite;
+}
+
+/* 3) Hoja: balanceo mínimo desde su base, como una brisa leve */
+@keyframes gismatLeafSway {
+  0%, 100% { transform: rotate(-1.2deg); }
+  50%      { transform: rotate(1.2deg); }
+}
+
+.gismat-layer-leaf {
+  transform-origin: 182px 280px;
+  animation: gismatLeafSway 6.5s ease-in-out infinite;
+}
+
+/* 4) Círculo/pin exterior verde: respiración casi imperceptible */
+@keyframes gismatPinBreathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.012); }
+}
+
+.gismat-layer-pin {
+  transform-origin: 180px 192px;
+  animation: gismatPinBreathe 8s ease-in-out infinite;
+}
+
+/* 5) Ondas: expansión suave y repetitiva, de adentro hacia afuera */
+@keyframes gismatRippleScale {
+  0%   { transform: scale(0.96); }
+  30%  { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+@keyframes gismatRippleFade {
+  0%   { opacity: 0; }
+  30%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Escala con ease-out (expansión natural) y opacidad lineal (más presencia) */
+.gismat-ripple-ring {
+  animation:
+    gismatRippleScale 6s ease-out infinite,
+    gismatRippleFade 6s linear infinite;
+}
+.gismat-ripple-ring--1 { transform-origin: 180px 373px; animation-delay: 0s; }
+.gismat-ripple-ring--2 { transform-origin: 180px 372px; animation-delay: 2s; }
+.gismat-ripple-ring--3 { transform-origin: 180px 370px; animation-delay: 4s; }
+
+/* 10) Respetar prefers-reduced-motion: el logo queda exactamente estático */
+@media (prefers-reduced-motion: reduce) {
+  .gismat-login-logo-entrance,
+  .gismat-layer-river,
+  .gismat-layer-river-flow,
+  .gismat-layer-leaf,
+  .gismat-layer-pin,
+  .gismat-ripple-ring {
+    animation: none !important;
+    will-change: auto;
+  }
+  .gismat-layer-river-flow {
+    opacity: 0 !important;
+  }
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .gismat-logo-entrance,
+  .gismat-logo-float {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  .gismat-logo-interactive {
+    transition: none !important;
+  }
+  .gismat-logo-interactive:hover,
+  .gismat-logo-interactive:active,
+  .gismat-logo-interactive.is-touched {
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
+@media print {
+  body {
+    background: white !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* Modern Leaflet UI Styling */
+.leaflet-container {
+  font-family: inherit !important;
+  width: 100%;
+  height: 100%;
+  background: #f1f5f9;
+}
+
+.leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.15), 0 8px 10px -6px rgba(15, 23, 42, 0.1) !important;
+  border: 1px solid #e2e8f0 !important;
+  overflow: hidden !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: normal !important;
+}
+
+.leaflet-popup-tip {
+  background: white !important;
+  box-shadow: none !important;
+}
+
+.leaflet-control-scale-line {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid #cbd5e1 !important;
+  border-top: none !important;
+  font-size: 10px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+  padding: 2px 6px !important;
+  border-radius: 0 0 4px 4px !important;
+}
+

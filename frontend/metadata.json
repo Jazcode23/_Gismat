@@ -1,0 +1,6 @@
+{
+  "name": "GISMAT - Monitoreo Ambiental Tucumán",
+  "description": "Sistema de Información Geográfica para el Monitoreo Ambiental en Tucumán: Detecciones IA Satelitales, Riesgo Hídrico, Cuadrillas y Trazabilidad Territorial.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
