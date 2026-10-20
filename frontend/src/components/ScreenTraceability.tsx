@@ -714,7 +714,7 @@ export const ScreenTraceability: React.FC<ScreenTraceabilityProps> = ({ onNaviga
                             className="flex items-center gap-2 bg-white p-1.5 rounded-lg border border-slate-300 shadow-2xs hover:border-slate-400 hover:shadow-xs transition-all cursor-pointer group"
                             onClick={() =>
                               setSelectedPhoto({
-                                src: '/src/assets/images/evidencia_antes_1791152391374.jpg',
+                                src: '/images/evidencia_antes_1791152391374.jpg',
                                 label: 'ANTES DE LA INTERVENCIÓN',
                                 date: getRelativeDateFormatted(-14),
                                 desc: 'Basural clandestino a cielo abierto sobre talud de Canal Norte: acumulación de escombros de obra, bolsas plásticas y vegetación deteriorada.',
@@ -724,7 +724,7 @@ export const ScreenTraceability: React.FC<ScreenTraceabilityProps> = ({ onNaviga
                           >
                             <div className="w-20 sm:w-24 h-14 rounded-md bg-slate-900 overflow-hidden relative shrink-0">
                               <img
-                                src="/src/assets/images/evidencia_antes_1791152391374.jpg"
+                                src="/images/evidencia_antes_1791152391374.jpg"
                                 alt="Fotografía real de campo Antes: basural en Canal Norte"
                                 referrerPolicy="no-referrer"
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
@@ -748,7 +748,7 @@ export const ScreenTraceability: React.FC<ScreenTraceabilityProps> = ({ onNaviga
                             className="flex items-center gap-2 bg-white p-1.5 rounded-lg border border-emerald-300 shadow-2xs hover:border-emerald-400 hover:shadow-xs transition-all cursor-pointer group"
                             onClick={() =>
                               setSelectedPhoto({
-                                src: '/src/assets/images/evidencia_despues_1791152402588.jpg',
+                                src: '/images/evidencia_despues_1791152402588.jpg',
                                 label: 'DESPUÉS DE LA INTERVENCIÓN',
                                 date: selectedFoco.lastDate || getRelativeDateFormatted(0),
                                 desc: 'Mismo encuadre tras la intervención municipal: residuos y escombros completamente retirados, suelo nivelado con tierra fértil y plantación de especies nativas.',
@@ -758,7 +758,7 @@ export const ScreenTraceability: React.FC<ScreenTraceabilityProps> = ({ onNaviga
                           >
                             <div className="w-20 sm:w-24 h-14 rounded-md bg-slate-900 overflow-hidden relative shrink-0">
                               <img
-                                src="/src/assets/images/evidencia_despues_1791152402588.jpg"
+                                src="/images/evidencia_despues_1791152402588.jpg"
                                 alt="Fotografía real de campo Después: terreno saneado y recuperado"
                                 referrerPolicy="no-referrer"
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
@@ -826,7 +826,7 @@ export const ScreenTraceability: React.FC<ScreenTraceabilityProps> = ({ onNaviga
                               className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-md border border-slate-200 hover:border-slate-300 transition-all cursor-pointer group"
                               onClick={() =>
                                 setSelectedPhoto({
-                                  src: '/src/assets/images/evidencia_pesada_antes_1791152414625.jpg',
+                                  src: '/images/evidencia_pesada_antes_1791152414625.jpg',
                                   label: 'ANTES - RETIRO DE ESCOMBROS',
                                   date: intervenciones[1]?.date ?? '',
                                   desc: 'Registro fotográfico de campo: 14 toneladas de escombros de demolición y residuos pesados acopiados de forma ilegal antes de la intervención de la retroexcavadora.',
@@ -836,7 +836,7 @@ export const ScreenTraceability: React.FC<ScreenTraceabilityProps> = ({ onNaviga
                             >
                               <div className="w-16 h-11 rounded bg-slate-900 overflow-hidden relative shrink-0">
                                 <img
-                                  src="/src/assets/images/evidencia_pesada_antes_1791152414625.jpg"
+                                  src="/images/evidencia_pesada_antes_1791152414625.jpg"
                                   alt="Antes: escombros y residuos pesados"
                                   referrerPolicy="no-referrer"
                                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
@@ -856,7 +856,7 @@ export const ScreenTraceability: React.FC<ScreenTraceabilityProps> = ({ onNaviga
                               className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-md border border-slate-200 hover:border-slate-300 transition-all cursor-pointer group"
                               onClick={() =>
                                 setSelectedPhoto({
-                                  src: '/src/assets/images/evidencia_pesada_despues_1791152426299.jpg',
+                                  src: '/images/evidencia_pesada_despues_1791152426299.jpg',
                                   label: 'DESPUÉS - RETIRO DE ESCOMBROS',
                                   date: intervenciones[1]?.date ?? '',
                                   desc: 'Mismo encuadre tras la operación: despeje total con pala retroexcavadora municipal y suelo nivelado para posterior forestación comunitaria.',
@@ -866,7 +866,7 @@ export const ScreenTraceability: React.FC<ScreenTraceabilityProps> = ({ onNaviga
                             >
                               <div className="w-16 h-11 rounded bg-slate-900 overflow-hidden relative shrink-0">
                                 <img
-                                  src="/src/assets/images/evidencia_pesada_despues_1791152426299.jpg"
+                                  src="/images/evidencia_pesada_despues_1791152426299.jpg"
                                   alt="Después: terreno despejado por retroexcavadora"
                                   referrerPolicy="no-referrer"
                                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
