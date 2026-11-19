@@ -190,7 +190,13 @@ export const ScreenBasurales: React.FC<ScreenBasuralesProps> = ({ onNavigate }) 
     const e = validarForm(form);
     setErrores(e);
     setErrorGeneral('');
-    if (Object.keys(e).length) return;
+    if (Object.keys(e).length) {
+      const nombres: Record<string, string> = { ubicacion: 'dirección', latitud: 'ubicación en el mapa (latitud)', longitud: 'ubicación en el mapa (longitud)', volumenM3: 'volumen', superficieM2: 'superficie', foto: 'foto' };
+      const faltan = Object.keys(e).map((k) => nombres[k] || k).join(', ');
+      setErrorGeneral(`No se registró: revisá los campos marcados en rojo (${faltan}). Para ubicar el foco hacé clic en el mapa.`);
+      setTimeout(() => document.querySelector('[data-testid="form-error"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      return;
+    }
     setGuardando(true);
     try {
       const r = editando ? await basuralesService.modificar(editando.id, form) : await basuralesService.crear(form);
@@ -536,7 +542,7 @@ export const ScreenBasurales: React.FC<ScreenBasuralesProps> = ({ onNavigate }) 
           </div>
         }
       >
-        {errorGeneral && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">{errorGeneral}</div>}
+        {errorGeneral && <div data-testid="form-error" role="alert" className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">{errorGeneral}</div>}
 
         {editando && (
           <div className="mb-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
