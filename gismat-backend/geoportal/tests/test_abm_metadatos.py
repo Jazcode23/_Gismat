@@ -123,3 +123,27 @@ class BajaPrecondicionTests(BaseGismat):
         self.assertNotIn(f["id"], [x["id"] for x in self.client.get("/api/geoportal/focos").json()])
         # sigue consultable si se pide explícitamente por estado
         self.assertIn(f["id"], [x["id"] for x in self.client.get("/api/geoportal/focos?estado=inactivo").json()])
+
+
+class FotoEnBaseDeDatosTests(BaseGismat):
+    """La foto vive en la base (no en el disco del hosting) y se sirve por /api/media/."""
+
+    def test_foto_se_guarda_en_la_base_y_se_sirve_por_api_media(self):
+        import io
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        buf = io.BytesIO(); Image.new("RGB", (8, 8), (10, 120, 200)).save(buf, "PNG")
+        self.login_as("operador")
+        r = self.client.post("/api/focos/", {"tipo": "basural", "ubicacion": "Con foto en BD", "latitud": -26.82, "longitud": -65.2,
+                                             "foto": SimpleUploadedFile("f.png", buf.getvalue(), content_type="image/png")}, format="multipart")
+        self.assertEqual(r.status_code, 201, r.content)
+        url = r.json()["foto"]
+        self.assertIn("/api/media/focos/", url)
+        self.assertTrue(m.ArchivoSubido.objects.filter(nombre__startswith="focos/").exists())
+        ruta = url[url.index("/api/media/"):]
+        self.client.credentials()  # las fotos se piden sin encabezado de sesión (etiqueta <img>)
+        g = self.client.get(ruta)
+        self.assertEqual(g.status_code, 200)
+        self.assertEqual(g["Content-Type"], "image/png")
+        self.assertEqual(g.content, buf.getvalue())
+        self.assertEqual(self.client.get("/api/media/focos/no-existe.png").status_code, 404)

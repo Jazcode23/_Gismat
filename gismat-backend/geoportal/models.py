@@ -322,3 +322,14 @@ class DeteccionIA(models.Model):
                 n += 1
             self.codigo = f"AI-{n:03d}"
         super().save(*args, **kwargs)
+
+
+class ArchivoSubido(models.Model):
+    """Archivo subido (foto de campo) guardado en la base; ver geoportal/storage.py."""
+    nombre = models.CharField(max_length=255, unique=True)
+    contenido = models.BinaryField()
+    tipo = models.CharField(max_length=100, default="application/octet-stream")
+    creado = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.nombre
