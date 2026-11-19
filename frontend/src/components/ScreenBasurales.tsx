@@ -190,7 +190,13 @@ export const ScreenBasurales: React.FC<ScreenBasuralesProps> = ({ onNavigate }) 
     const e = validarForm(form);
     setErrores(e);
     setErrorGeneral('');
-    if (Object.keys(e).length) return;
+    if (Object.keys(e).length) {
+      const nombres: Record<string, string> = { ubicacion: 'dirección', latitud: 'ubicación en el mapa (latitud)', longitud: 'ubicación en el mapa (longitud)', volumenM3: 'volumen', superficieM2: 'superficie', foto: 'foto' };
+      const faltan = Object.keys(e).map((k) => nombres[k] || k).join(', ');
+      setErrorGeneral(`No se registró: revisá los campos marcados en rojo (${faltan}). Para ubicar el foco hacé clic en el mapa.`);
+      setTimeout(() => document.querySelector('[data-testid="form-error"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      return;
+    }
     setGuardando(true);
     try {
       const r = editando ? await basuralesService.modificar(editando.id, form) : await basuralesService.crear(form);
@@ -536,7 +542,7 @@ export const ScreenBasurales: React.FC<ScreenBasuralesProps> = ({ onNavigate }) 
           </div>
         }
       >
-        {errorGeneral && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">{errorGeneral}</div>}
+        {errorGeneral && <div data-testid="form-error" role="alert" className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">{errorGeneral}</div>}
 
         {editando && (
           <div className="mb-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
@@ -576,6 +582,16 @@ export const ScreenBasurales: React.FC<ScreenBasuralesProps> = ({ onNavigate }) 
 
           <div className="sm:col-span-2">
             <span className="block text-xs font-semibold text-slate-600 mb-1">Ubicación en el mapa *</span>
+            {form.latitud.trim() === '' || form.longitud.trim() === '' ? (
+              <p data-testid="aviso-mapa" className={`mb-2 rounded-lg border px-3 py-2 text-xs font-medium ${errores.latitud || errores.longitud ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+                <i className="fa-solid fa-location-dot mr-1.5"></i>
+                Es obligatorio marcar el basural en el mapa: hacé clic en el lugar exacto. Sin ese punto no se puede registrar.
+              </p>
+            ) : (
+              <p data-testid="aviso-mapa" className="mb-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+                <i className="fa-solid fa-circle-check mr-1.5"></i>Ubicación marcada. Podés moverla haciendo clic en otro punto del mapa.
+              </p>
+            )}
             <MapPicker
               lat={form.latitud.trim() === '' || Number.isNaN(Number(form.latitud.replace(',', '.'))) ? null : Number(form.latitud.replace(',', '.'))}
               lng={form.longitud.trim() === '' || Number.isNaN(Number(form.longitud.replace(',', '.'))) ? null : Number(form.longitud.replace(',', '.'))}
