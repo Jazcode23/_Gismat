@@ -7,7 +7,7 @@
  *  - La baja es lógica (DELETE => estado "inactivo"): el historial y las intervenciones se conservan.
  *  - Un foco dado de baja no se puede modificar.
  */
-import { api, qs, session } from './apiClient';
+import { api, API_URL, qs, session } from './apiClient';
 
 export type TipoFoco = 'basural' | 'microbasural' | 'volcadero';
 export type EstadoFoco = 'activo' | 'pendiente' | 'limpiado' | 'inactivo';
@@ -206,7 +206,13 @@ export const FOTO_MAX_BYTES = 5 * 1024 * 1024;
 /** El backend devuelve la foto con URL absoluta; se usa solo la ruta (/media/...) para que pase por el proxy del frontend. */
 export function fotoSrc(url: string | null | undefined): string | null {
   if (!url) return null;
-  try { return new URL(url, window.location.origin).pathname; } catch { return url; }
+  // La API puede estar en otro dominio (producción): las fotos se piden siempre al origen de la API, siempre por https
+  // si la página es https, aunque el backend (detrás del proxy) arme la URL con http.
+  try {
+    const ruta = new URL(url, window.location.origin).pathname;
+    const origen = /^https?:\/\//.test(API_URL) ? new URL(API_URL).origin : '';
+    return origen + ruta;
+  } catch { return url; }
 }
 
 const num = (s: string) => Number(s.trim().replace(',', '.'));
