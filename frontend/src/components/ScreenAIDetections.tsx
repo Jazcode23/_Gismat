@@ -1,3 +1,5 @@
+import { ChartMeta, EjeTitulo } from './ChartMeta';
+import { useMetadatos } from '../services/metadatos';
 import React, { useState } from 'react';
 import { ScreenId, TransitionType } from '../types';
 import { GismatModal } from './GismatModal';
@@ -19,6 +21,7 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
   const { aiDetections: aiDetectionsRaw, confirmDetection, activeMonthName, previousMonthName } = useGismatStore();
 
   // CORRECCIÓN: el store puede devolver undefined al inicio (antes de cargar datos)
+  const meta = useMetadatos();
   const aiDetections: DetectionItem[] = aiDetectionsRaw ?? [];
 
   const [inspectionModalOpen, setInspectionModalOpen] = useState(false);
@@ -188,6 +191,19 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
                 />
               </svg>
               {!sidebarCollapsed && <span>Trazabilidad</span>}
+            </a>
+
+            {/* Basurales (ABM) */}
+            <a
+              className="flex items-center gap-3.5 px-4 py-2.5 rounded-lg text-blue-100 hover:bg-blue-700/60 font-medium text-sm transition-colors cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                onNavigate('CUR_05_BASURALES', 'none');
+              }}
+              href="#basurales"
+            >
+              <i className="fa-solid fa-trash-can w-5 text-center opacity-90 shrink-0"></i>
+              {!sidebarCollapsed && <span>Basurales</span>}
             </a>
           </nav>
         </div>
@@ -422,38 +438,33 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
 
           {/* BEGIN: Charts Section */}
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-6" data-purpose="charts-visualizations">
-            <div className="lg:col-span-7 bg-white p-5 rounded-xl border border-slate-200/90 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-4">
+            {/* ---- Gráfico 1: detecciones por mes ---- */}
+            <div className="lg:col-span-7 bg-white p-5 rounded-xl border border-slate-200/90 shadow-sm flex flex-col">
+              <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                      />
-                    </svg>
-                    <h3 className="text-xs font-bold text-slate-800">Detecciones Mensuales</h3>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Evolución histórica de anomalías {getCurrentYear()}</p>
+                  <h3 className="text-xs font-bold text-slate-800">Detecciones por mes</h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Cantidad de anomalías detectadas por el satélite en cada mes de {getCurrentYear()}, y cuántas se confirmaron como foco.
+                  </p>
                 </div>
-                <div className="flex items-center gap-4 text-xs font-medium text-slate-600">
+                <div className="flex items-center gap-4 text-[11px] font-medium text-slate-600">
                   <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-slate-900 inline-block"></span> Detectados
+                    <span className="w-4 h-2.5 rounded-sm bg-slate-800 inline-block"></span> Detectadas (todas)
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block"></span> Confirmados
+                    <svg width="18" height="6" aria-hidden="true"><line x1="0" y1="3" x2="18" y2="3" stroke="#64748b" strokeWidth="2" strokeDasharray="3 2" /></svg>
+                    Confirmadas
                   </span>
                 </div>
               </div>
 
+              <EjeTitulo className="mb-1">↑ N.º de detecciones por mes</EjeTitulo>
               <div className="relative h-48 w-full">
                 {(() => {
                   const detectionsData = stats.monthly;
                   if (detectionsData.length === 0) return null;
 
-                  const maxVal = stats.maxMensual;
+                  const maxVal = Math.ceil(stats.maxMensual / 3) * 3; // múltiplo de 3: marcas del eje enteras y equiespaciadas
                   const paddingL = 35;
                   const paddingR = 15;
                   const paddingT = 20;
@@ -473,35 +484,34 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
                   const confLineD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.yConf.toFixed(1)}`).join(' ');
 
                   return (
-                    <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 500 160">
+                    <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 500 160" role="img"
+                      aria-label={`Detecciones por mes de ${getCurrentYear()}: ${points.map((p) => `${p.month} ${p.detectados} detectadas, ${p.confirmados} confirmadas`).join('; ')}`}>
                       <line stroke="#cbd5e1" strokeDasharray="4 4" strokeWidth="1" x1="30" x2="490" y1="20" y2="20" />
                       <line stroke="#cbd5e1" strokeDasharray="4 4" strokeWidth="1" x1="30" x2="490" y1="60" y2="60" />
                       <line stroke="#cbd5e1" strokeDasharray="4 4" strokeWidth="1" x1="30" x2="490" y1="100" y2="100" />
                       <line stroke="#e2e8f0" strokeWidth="1" x1="30" x2="490" y1="140" y2="140" />
 
-                      <text className="text-[10px] fill-slate-400 font-sans" x="12" y="24">{Math.round(stats.maxMensual)}</text>
-                      <text className="text-[10px] fill-slate-400 font-sans" x="12" y="64">{Math.round((stats.maxMensual * 2) / 3)}</text>
-                      <text className="text-[10px] fill-slate-400 font-sans" x="12" y="104">{Math.round(stats.maxMensual / 3)}</text>
+                      <text className="text-[10px] fill-slate-400 font-sans" x="12" y="24">{maxVal}</text>
+                      <text className="text-[10px] fill-slate-400 font-sans" x="12" y="64">{(maxVal * 2) / 3}</text>
+                      <text className="text-[10px] fill-slate-400 font-sans" x="12" y="104">{maxVal / 3}</text>
                       <text className="text-[10px] fill-slate-400 font-sans" x="16" y="143">0</text>
 
-                      {/* Area and Line for Detectados */}
+                      {/* Área y línea de Detectadas */}
                       <path d={areaD} fill="#1e293b" opacity="0.85" />
                       <path d={lineD} fill="none" stroke="#0f172a" strokeWidth="2.5" />
 
-                      {/* Line for Confirmados */}
+                      {/* Línea de Confirmadas */}
                       <path d={confLineD} fill="none" stroke="#94a3b8" strokeDasharray="3 3" strokeWidth="1.8" />
 
-                      {/* Data dots */}
+                      {/* Puntos con su valor al pasar el cursor */}
                       {points.map((p, idx) => (
                         <g key={idx}>
-                          <circle
-                            cx={p.x}
-                            cy={p.y}
-                            fill={p.isCurrent ? '#3b82f6' : '#1e293b'}
-                            r={p.isCurrent ? 5 : 3.5}
-                            stroke="#ffffff"
-                            strokeWidth={1.5}
-                          />
+                          <circle cx={p.x} cy={p.yConf} fill="#ffffff" r={3} stroke="#64748b" strokeWidth={1.5}>
+                            <title>{`${p.month}: ${p.confirmados} confirmadas`}</title>
+                          </circle>
+                          <circle cx={p.x} cy={p.y} fill={p.isCurrent ? '#3b82f6' : '#1e293b'} r={p.isCurrent ? 5 : 3.5} stroke="#ffffff" strokeWidth={1.5}>
+                            <title>{`${p.month}${p.isCurrent ? ' (mes en curso)' : ''}: ${p.detectados} detectadas · ${p.confirmados} confirmadas · ${p.pendientes} en revisión · ${p.descartados} descartadas`}</title>
+                          </circle>
                         </g>
                       ))}
                     </svg>
@@ -514,54 +524,75 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
                   <span
                     key={d.month}
                     className={d.isCurrent ? 'text-blue-700 font-bold bg-blue-50 px-1 rounded' : 'text-slate-600'}
+                    title={d.isCurrent ? 'Mes en curso: el dato todavía está incompleto' : undefined}
                   >
                     {d.month}{d.isCurrent ? '*' : ''}
                   </span>
                 ))}
               </div>
+              <div className="text-center mt-1">
+                <EjeTitulo>Mes de {getCurrentYear()} → <span className="normal-case font-medium text-blue-700">* mes en curso (datos parciales)</span></EjeTitulo>
+              </div>
+
+              <ChartMeta id="detecciones_mensuales" contexto={{ anio: getCurrentYear(), mes_actual: stats.monthly[stats.monthly.length - 1]?.month ?? 'mes actual' }} />
             </div>
 
-            <div className="lg:col-span-5 bg-white p-5 rounded-xl border border-slate-200/90 shadow-sm flex flex-col justify-between">
-              <div className="mb-4">
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                  <h3 className="text-xs font-bold text-slate-800">Distribución de Confianza IA</h3>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5">Índice de precisión del modelo predictivo</p>
+            {/* ---- Gráfico 2: distribución de confianza ---- */}
+            <div className="lg:col-span-5 bg-white p-5 rounded-xl border border-slate-200/90 shadow-sm flex flex-col">
+              <div className="mb-3">
+                <h3 className="text-xs font-bold text-slate-800">Detecciones según la confianza del modelo</h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Cuántas detecciones recibieron cada puntaje de confianza (0-100 %) que la IA asigna a su propia detección.
+                </p>
               </div>
 
-              <div className="h-48 flex items-end justify-between gap-3 px-2 pb-2 border-b border-slate-100">
-                <div className="flex-1 flex flex-col items-center h-full justify-end group">
-                  <div className="w-full bg-[#6a1b9a] rounded-t-sm transition-all hover:bg-purple-900" style={{ height: `${(stats.buckets[0] / stats.maxBucket) * 100}%`, minHeight: stats.buckets[0] > 0 ? '3%' : 0 }} title={`${stats.buckets[0]} detecciones`}></div>
-                </div>
-                <div className="flex-1 flex flex-col items-center h-full justify-end group">
-                  <div className="w-full bg-[#7b2cbf] rounded-t-sm transition-all hover:bg-purple-800" style={{ height: `${(stats.buckets[1] / stats.maxBucket) * 100}%`, minHeight: stats.buckets[1] > 0 ? '3%' : 0 }} title={`${stats.buckets[1]} detecciones`}></div>
-                </div>
-                <div className="flex-1 flex flex-col items-center h-full justify-end group">
-                  <div className="w-full bg-[#9d4edd] rounded-t-sm transition-all hover:bg-purple-700" style={{ height: `${(stats.buckets[2] / stats.maxBucket) * 100}%`, minHeight: stats.buckets[2] > 0 ? '3%' : 0 }} title={`${stats.buckets[2]} detecciones`}></div>
-                </div>
-                <div className="flex-1 flex flex-col items-center h-full justify-end group">
-                  <div className="w-full bg-[#c77dff] rounded-t-sm transition-all hover:bg-purple-600" style={{ height: `${(stats.buckets[3] / stats.maxBucket) * 100}%`, minHeight: stats.buckets[3] > 0 ? '3%' : 0 }} title={`${stats.buckets[3]} detecciones`}></div>
-                </div>
-                <div className="flex-1 flex flex-col items-center h-full justify-end group">
-                  <div className="w-full bg-[#e0aaff] rounded-t-sm transition-all hover:bg-purple-400" style={{ height: `${(stats.buckets[4] / stats.maxBucket) * 100}%`, minHeight: stats.buckets[4] > 0 ? '3%' : 0 }} title={`${stats.buckets[4]} detecciones`}></div>
-                </div>
+              {(() => {
+                const RANGOS = meta.detecciones.confianza.rangos; // etiqueta, color y nivel vienen del backend
+                const totalConf = stats.buckets.reduce((a: number, b: number) => a + b, 0);
+                const ALTO = 140;
+                return (
+                  <>
+                    <EjeTitulo className="mb-1">↑ N.º de detecciones</EjeTitulo>
+                    <div className="h-48 flex items-end justify-between gap-3 px-2 pb-0 border-b border-slate-200">
+                      {RANGOS.map((r, i) => {
+                        const n = stats.buckets[i];
+                        const pct = totalConf ? Math.round((n / totalConf) * 100) : 0;
+                        return (
+                          <div key={r.etiqueta} className="flex-1 flex flex-col items-center justify-end h-full" title={`Confianza ${r.etiqueta} (${r.nivel}): ${n} detecciones, ${pct}% del total`}>
+                            <span className="text-[11px] font-bold text-slate-700 leading-none">{n}</span>
+                            <span className="text-[9px] text-slate-400 mb-1">{pct}%</span>
+                            <div className="w-full rounded-t-sm" style={{ height: `${(n / stats.maxBucket) * ALTO}px`, minHeight: n > 0 ? 4 : 0, backgroundColor: r.color }}></div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between px-2 gap-3 pt-1.5 text-[10px] font-semibold text-slate-600">
+                      {RANGOS.map((r) => (
+                        <span key={r.etiqueta} className="flex-1 text-center">{r.etiqueta}</span>
+                      ))}
+                    </div>
+                    <div className="text-center mt-1">
+                      <EjeTitulo>Confianza asignada por el modelo (%) →</EjeTitulo>
+                    </div>
+
+                    {/* Escala de color: qué significa la intensidad */}
+                    <div className="mt-3 flex items-center gap-2 text-[10px] text-slate-500">
+                      <span className="shrink-0">Menor confianza</span>
+                      <div className="flex-1 h-2 rounded-full" style={{ background: 'linear-gradient(to right, #e0aaff, #c77dff, #9d4edd, #7b2cbf, #6a1b9a)' }} aria-hidden="true"></div>
+                      <span className="shrink-0">Mayor confianza</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1 text-center">Color más intenso = puntaje de confianza más alto. Total: {totalConf} detecciones.</p>
+                  </>
+                );
+              })()}
+
+              <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[10.5px] text-amber-800 leading-snug">
+                <strong>No es la precisión del modelo.</strong> {meta.detecciones.confianza.descripcion.replace(' No es la precisión del modelo.', '')}{' '}
+                Precisión real ({meta.detecciones.precision.formula}):{' '}
+                <strong>{stats.precision === null ? 'aún sin detecciones revisadas' : `${stats.precision}%`}</strong>.
               </div>
 
-              <div className="flex justify-between px-1 pt-2 text-[10px] font-semibold text-slate-600">
-                <span className="flex-1 text-center">90-100%</span>
-                <span className="flex-1 text-center">80-90%</span>
-                <span className="flex-1 text-center">70-80%</span>
-                <span className="flex-1 text-center">60-70%</span>
-                <span className="flex-1 text-center">&lt;60%</span>
-              </div>
+              <ChartMeta id="confianza_ia" />
             </div>
           </section>
           {/* END: Charts Section */}
@@ -946,9 +977,12 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
 
                 <div className="mt-3 space-y-2">
                   <span className="font-bold text-slate-700 text-[11px] block">Variables Satelitales:</span>
+                  <p className="text-[10px] text-slate-500 leading-snug -mt-1">
+                    Índices de 0 a 100 %. Barra más llena = valor más alto (0 % = mínimo, 100 % = máximo). {meta.detecciones.variablesSatelitales.nota}
+                  </p>
                   <div>
                     <div className="flex justify-between text-[10.5px] font-medium text-slate-700 mb-0.5">
-                      <span>Vulnerabilidad Hídrica</span>
+                      <span title={meta.detecciones.variablesSatelitales.vulnHidrica.descripcion} className="cursor-help border-b border-dotted border-slate-400">{meta.detecciones.variablesSatelitales.vulnHidrica.nombre}</span>
                       <span className="font-bold text-red-600">{selectedDetection.vulnHidrica ?? 0}%</span>
                     </div>
                     <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
@@ -957,7 +991,7 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
                   </div>
                   <div>
                     <div className="flex justify-between text-[10.5px] font-medium text-slate-700 mb-0.5">
-                      <span>Afectación de Escurrimiento</span>
+                      <span title={meta.detecciones.variablesSatelitales.escurrimiento.descripcion} className="cursor-help border-b border-dotted border-slate-400">{meta.detecciones.variablesSatelitales.escurrimiento.nombre}</span>
                       <span className="font-bold text-orange-600">{selectedDetection.escurrimiento ?? 0}%</span>
                     </div>
                     <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
@@ -966,7 +1000,7 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
                   </div>
                   <div>
                     <div className="flex justify-between text-[10.5px] font-medium text-slate-700 mb-0.5">
-                      <span>Residuos Peligrosos</span>
+                      <span title={meta.detecciones.variablesSatelitales.residuosPeligrosos.descripcion} className="cursor-help border-b border-dotted border-slate-400">{meta.detecciones.variablesSatelitales.residuosPeligrosos.nombre}</span>
                       <span className="font-bold text-amber-600">{selectedDetection.residuosPeligrosos ?? 0}%</span>
                     </div>
                     <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">

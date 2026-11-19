@@ -160,6 +160,19 @@ export const ScreenTraceability: React.FC<ScreenTraceabilityProps> = ({ onNaviga
               <i className="fa-solid fa-file-waveform text-lg w-5"></i>
               {!sidebarCollapsed && <span>Trazabilidad</span>}
             </a>
+
+            {/* Basurales (ABM) */}
+            <a
+              className="flex items-center space-x-3 px-4 py-3 rounded-lg text-white/90 hover:bg-white/10 transition text-sm font-medium cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                onNavigate('CUR_05_BASURALES', 'none');
+              }}
+              href="#basurales"
+            >
+              <i className="fa-solid fa-trash-can text-lg w-5"></i>
+              {!sidebarCollapsed && <span>Basurales</span>}
+            </a>
           </nav>
         </div>
 

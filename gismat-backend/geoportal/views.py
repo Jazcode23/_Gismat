@@ -18,6 +18,7 @@ from .filters import filtrar_detecciones, filtrar_focos
 from .services import alertas as srv_alertas
 from .services import dashboard, geo, reportes
 from .services.focos import dar_de_baja, recalcular, registrar_intervencion
+from .services.metadatos import metadatos as metadatos_servicio
 
 
 def focos_base():
@@ -42,6 +43,10 @@ class FocoViewSet(viewsets.ModelViewSet):
         foco = self.get_object()
         if foco.estado == "inactivo":
             return Response({"detail": "El foco ya está dado de baja."}, status=400)
+        # CU007: solo se da de baja un foco en estado Activo o Saneado (limpiado)
+        if foco.estado not in ("activo", "limpiado"):
+            return Response({"detail": "Solo puede darse de baja un foco en estado Activo o Saneado. "
+                                       "Registrá primero la intervención sobre el foco pendiente."}, status=400)
         dar_de_baja(foco, request.data.get("motivo", "") if hasattr(request.data, "get") else "")
         return Response(s.FocoSerializer(foco, context=self.get_serializer_context()).data)
 
@@ -235,6 +240,15 @@ class DashboardView(APIView):
         return Response(dashboard.indicadores(meses))
 
 
+class MetadatosView(APIView):
+    """Metadatos para interpretar datos y gráficos (umbrales de IRH, unidades, definiciones, guías de lectura)."""
+    permission_classes = [AccionPermitida]
+    acciones = {"get": "ver"}
+
+    def get(self, request):
+        return Response(metadatos_servicio())
+
+
 class ReporteFocosView(APIView):
     """GET /api/reportes/focos/?formato=pdf|csv  (+ los mismos filtros que /api/focos/)."""
 
@@ -322,8 +336,10 @@ class GeoportalViewSet(viewsets.ViewSet):
                           "conteo": conteos[i], "color": col} for i, n, ic, v, o, c, col in CAPAS])
 
     def focos(self, request):
-        return Response(s.FocoSerializer(filtrar_focos(focos_base(), request.query_params).order_by("codigo"),
-                                         many=True, context=self._ctx()).data)
+        qs = filtrar_focos(focos_base(), request.query_params)
+        if not request.query_params.get("estado"):
+            qs = qs.exclude(estado="inactivo")  # CU007: un foco dado de baja deja de mostrarse en el visor
+        return Response(s.FocoSerializer(qs.order_by("codigo"), many=True, context=self._ctx()).data)
 
     def foco(self, request, codigo):
         return Response(s.FocoSerializer(get_object_or_404(focos_base(), codigo=codigo), context=self._ctx()).data)

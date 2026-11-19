@@ -5,6 +5,7 @@ import { ScreenAIDetections } from './components/ScreenAIDetections';
 import { ScreenTraceability } from './components/ScreenTraceability';
 import { ScreenHydrologicalRisk } from './components/ScreenHydrologicalRisk';
 import { ScreenEnvironmentalDashboard } from './components/ScreenEnvironmentalDashboard';
+import { ScreenBasurales } from './components/ScreenBasurales';
 import { ScreenGeoportal } from './components/geoportal/ScreenGeoportal';
 
 export default function App() {
@@ -64,6 +65,11 @@ export default function App() {
         {/* Screen 5: CUR 04 - P7 - Dashboard de Gestión Ambiental */}
         {navState.currentScreen === 'CUR_04_P7_DASHBOARD' && (
           <ScreenEnvironmentalDashboard onNavigate={navigateTo} />
+        )}
+
+        {/* Screen 7: ABM de Basurales (alta, modificación y baja lógica de focos) */}
+        {navState.currentScreen === 'CUR_05_BASURALES' && (
+          <ScreenBasurales onNavigate={navigateTo} />
         )}
 
         {/* Screen 6: Módulo Geoportal Municipal San Miguel de Tucumán */}

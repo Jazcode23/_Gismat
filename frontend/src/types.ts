@@ -4,6 +4,7 @@ export type ScreenId =
   | 'CUR_04_TRACEABILITY'
   | 'CUR_03_HYDROLOGICAL_RISK'
   | 'CUR_04_P7_DASHBOARD'
+  | 'CUR_05_BASURALES'
   | 'GEOPORTAL';
 
 export type TransitionType = 'none' | 'push' | 'push_back' | 'slide_up' | 'fade';
