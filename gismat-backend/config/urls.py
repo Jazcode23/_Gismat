@@ -8,5 +8,6 @@ urlpatterns = [
     path("api/", include("accounts.urls")),
     path("api/", include("geoportal.urls")),
     # Fotos de campo: se sirven también con DEBUG apagado (static() no sirve nada en producción).
-    re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT}),
+    # También bajo /api/media/: si el frontend reenvía solo /api/* al backend, las fotos viajan por esa misma ruta.
+    re_path(r"^(?:api/)?media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT}),
 ]
