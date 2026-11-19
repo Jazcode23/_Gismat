@@ -67,7 +67,9 @@ export async function api<T = unknown>(
   opts: { method?: string; body?: unknown; auth?: boolean } = {}
 ): Promise<T> {
   const headers: Record<string, string> = {};
-  if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+  const esFormData = typeof FormData !== 'undefined' && opts.body instanceof FormData;
+  // Con FormData el navegador define el Content-Type (multipart + boundary)
+  if (opts.body !== undefined && !esFormData) headers['Content-Type'] = 'application/json';
   const token = session.getToken();
   if (token && opts.auth !== false) headers.Authorization = `Token ${token}`;
 
@@ -76,7 +78,7 @@ export async function api<T = unknown>(
     res = await fetch(`${API_URL}${path}`, {
       method: opts.method || (opts.body !== undefined ? 'POST' : 'GET'),
       headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      body: opts.body === undefined ? undefined : esFormData ? (opts.body as FormData) : JSON.stringify(opts.body),
     });
   } catch {
     throw new ApiError(0, 'No se pudo conectar con el servidor de GISMAT.');

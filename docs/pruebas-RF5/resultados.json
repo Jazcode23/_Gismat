@@ -1,0 +1,274 @@
+[
+  {
+    "id": "CP-CU005-01",
+    "cu": "CU005",
+    "titulo": "Alta exitosa con todos los datos y fotografía de campo",
+    "esperado": "El foco se registra con código, IRH calculado y categoría; queda en la lista y visible en el visor; la foto se guarda.",
+    "obtenido": "MB-013 registrado. IRH calculado: 55 (Moderado). Foto cargada; figura en la lista y en el visor.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU005-02",
+    "cu": "CU005",
+    "titulo": "Alta con datos mínimos: variables sin relevar",
+    "esperado": "Se registra con solo los obligatorios; el IRH queda provisorio y se informa qué datos faltan.",
+    "obtenido": "BR-014 registrado. IRH calculado: 30 (Bajo), provisorio hasta relevar los datos pendientes.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU005-03",
+    "cu": "CU005",
+    "titulo": "Indicar la ubicación haciendo clic en el mapa (paso 3)",
+    "esperado": "El clic en el mapa completa latitud y longitud dentro del área de San Miguel de Tucumán y el foco se registra con esa ubicación.",
+    "obtenido": "Clic en el mapa -> latitud -26.824071, longitud -65.222569. BR-015 registrado. IRH calculado: 30 (Bajo), provisorio hasta relevar los datos pendientes.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU005-04",
+    "cu": "CU005",
+    "titulo": "Flujo 6a: faltan datos obligatorios",
+    "esperado": "No se registra; se indican los campos a corregir y el formulario permanece abierto (retorna al paso 5).",
+    "obtenido": "Mensajes: dirección obligatoria, latitud obligatoria, longitud obligatoria. No se creó ningún foco.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU005-05",
+    "cu": "CU005",
+    "titulo": "Flujo 6a: formato inválido (volumen negativo, coordenadas no numéricas)",
+    "esperado": "Se rechaza indicando el campo y el motivo.",
+    "obtenido": "Latitud no numérica y volumen negativo rechazados con mensaje por campo.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU005-06",
+    "cu": "CU005",
+    "titulo": "Ubicación fuera del área de San Miguel de Tucumán",
+    "esperado": "Se rechaza con mensaje claro; no se registra.",
+    "obtenido": "Rechazado: \"Fuera del área de San Miguel de Tucumán\".",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU005-07",
+    "cu": "CU005",
+    "titulo": "Flujo 7a: IRH crítico genera alerta automática (CU016)",
+    "esperado": "El IRH queda en categoría Crítico y se genera una alerta crítica asociada al foco.",
+    "obtenido": "BR-016 registrado. IRH calculado: 92.9 (Crítico). Alerta generada: \"Alerta hidrológica crítica: foco BR-016 a 53 m de Río Salí (Cauce Principal Troncal) (IRH 92.9)\" (alertas 4 -> 5).",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU005-08",
+    "cu": "CU005",
+    "titulo": "Estado de intervención informado al registrar (paso 4)",
+    "esperado": "El foco queda registrado con el estado elegido.",
+    "obtenido": "BR-017 registrado con estado \"Pendiente\".",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-FOTO-01",
+    "cu": "CU005",
+    "titulo": "Fotografía de campo: formato no permitido",
+    "esperado": "No se acepta un archivo que no sea JPG/PNG/WebP; se informa el motivo.",
+    "obtenido": "Rechazado: \"La foto debe ser JPG, PNG o WebP.\"",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-FOTO-02",
+    "cu": "CU005",
+    "titulo": "Fotografía de campo: tamaño máximo 5 MB",
+    "esperado": "Se rechaza una imagen mayor a 5 MB indicando el tamaño máximo.",
+    "obtenido": "Rechazado: \"La foto pesa 6.0 MB; el máximo es 5 MB.\"",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-FOTO-03",
+    "cu": "CU005",
+    "titulo": "Fotografía de campo: vista previa antes de confirmar y descarte",
+    "esperado": "Se ve la vista previa de la imagen elegida y se puede descartar.",
+    "obtenido": "Vista previa mostrada y descartada correctamente.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU005-09",
+    "cu": "CU005",
+    "titulo": "Flujo 8a: error técnico al guardar",
+    "esperado": "Se muestra \"No se pudo completar el registro, intente nuevamente.\" y no se registra el foco.",
+    "obtenido": "Mensaje exacto del caso de uso mostrado; no se creó ningún foco.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU005-10",
+    "cu": "CU005",
+    "titulo": "Rol Supervisor no puede registrar",
+    "esperado": "El botón \"Nuevo basural\" no se ofrece y la API responde 403.",
+    "obtenido": "Sin botón en pantalla; API: 403.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU006-01",
+    "cu": "CU006",
+    "titulo": "Modificar datos que no afectan el IRH",
+    "esperado": "Se actualiza el dato y el IRH se mantiene.",
+    "obtenido": "Datos actualizados con mensaje de éxito; IRH sin cambios (55).",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU006-02",
+    "cu": "CU006",
+    "titulo": "Modificar el volumen recalcula el IRH y la categoría",
+    "esperado": "El IRH se recalcula y se actualiza la categoría de riesgo.",
+    "obtenido": "IRH 55 -> 69. MB-013 actualizado. IRH vigente: 68.8 (Moderado).",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-FOTO-04",
+    "cu": "CU006",
+    "titulo": "Fotografía de campo: reemplazar la foto de un foco",
+    "esperado": "La nueva foto reemplaza a la anterior.",
+    "obtenido": "La miniatura apunta a un archivo nuevo.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-FOTO-05",
+    "cu": "CU006",
+    "titulo": "Fotografía de campo: quitar la foto de un foco",
+    "esperado": "El foco queda sin foto.",
+    "obtenido": "El foco quedó sin fotografía.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU006-03",
+    "cu": "CU006",
+    "titulo": "Flujo 5a: datos inválidos al modificar",
+    "esperado": "Se muestra el error y el foco no se modifica (retorna al paso 4).",
+    "obtenido": "Rechazado y sin cambios en el registro.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU006-04",
+    "cu": "CU006",
+    "titulo": "Flujo 7a: el recálculo lleva el IRH a Crítico y genera alerta",
+    "esperado": "La categoría pasa a Crítico y se genera una alerta automática.",
+    "obtenido": "BR-018 actualizado. IRH vigente: 92.9 (Crítico). Alerta automática generada.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU006-05",
+    "cu": "CU006",
+    "titulo": "Flujo 8a: error técnico al actualizar",
+    "esperado": "Se muestra un mensaje de error y el registro no se modifica.",
+    "obtenido": "Mensaje de error mostrado; el registro conserva sus datos.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU006-06",
+    "cu": "CU006",
+    "titulo": "Un foco dado de baja no puede modificarse",
+    "esperado": "No se ofrece \"Editar\" y la API rechaza la modificación.",
+    "obtenido": "Sin botón Editar; API: 400 \"El foco está dado de baja y no puede modificarse\".",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU007-01",
+    "cu": "CU007",
+    "titulo": "Baja de un foco Activo",
+    "esperado": "Pasa a Inactivo, sale de los vigentes, conserva historial; se pide confirmación.",
+    "obtenido": "Estado \"Inactivo\"; fuera de la lista de vigentes; historial conservado (1 -> 2 registros).",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU007-02",
+    "cu": "CU007",
+    "titulo": "Baja de un foco Saneado",
+    "esperado": "La baja procede y el foco queda Inactivo.",
+    "obtenido": "BR-021 (Saneado) -> Inactivo.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU007-03",
+    "cu": "CU007",
+    "titulo": "Precondición: un foco Pendiente de intervención no puede darse de baja",
+    "esperado": "El botón Baja está deshabilitado y la API rechaza con mensaje; el foco conserva su estado.",
+    "obtenido": "Botón deshabilitado; API 400 \"Solo puede darse de baja un foco en estado Activo o Saneado\"; estado sin cambios.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU007-04",
+    "cu": "CU007",
+    "titulo": "Flujo 4a: cancelación por el operador",
+    "esperado": "No hay cambios en el foco.",
+    "obtenido": "Se cerró la confirmación y el foco sigue Activo.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU007-05",
+    "cu": "CU007",
+    "titulo": "Flujo 5a: error técnico al dar de baja",
+    "esperado": "Se muestra un mensaje de error y el foco permanece en su estado.",
+    "obtenido": "Mensaje de error mostrado; el foco permanece Activo.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU007-06",
+    "cu": "CU007",
+    "titulo": "La baja excluye al foco de los cálculos vigentes y lo conserva en el historial",
+    "esperado": "Disminuyen los focos vigentes del dashboard; el foco no se muestra por defecto pero sí se consulta en \"Dados de baja\".",
+    "obtenido": "Focos vigentes 21 -> 20; fuera del visor; consultable en \"Dados de baja\".",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU007-07",
+    "cu": "CU007",
+    "titulo": "Rol Operador no puede dar de baja",
+    "esperado": "No se ofrece el botón Baja y la API responde 403.",
+    "obtenido": "Sin botón Baja; API: 403.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU008-01",
+    "cu": "CU008",
+    "titulo": "Consultar un foco: atributos, IRH e historial resumido de intervenciones",
+    "esperado": "Un panel de detalle muestra ubicación, tipo de residuo, volumen, estado, IRH y las intervenciones.",
+    "obtenido": "Detalle de BR-002 con atributos, IRH y 1 intervención(es).",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU008-02",
+    "cu": "CU008",
+    "titulo": "Un Supervisor puede consultar pero no modificar",
+    "esperado": "Ve el botón Ver y el detalle; no ve Editar ni Baja.",
+    "obtenido": "Consulta habilitada; edición y baja no disponibles.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU008-03",
+    "cu": "CU008",
+    "titulo": "Flujo 2a: foco con datos incompletos",
+    "esperado": "Muestra el resto de los atributos e indica que el IRH es provisorio y qué falta relevar.",
+    "obtenido": "Atributos mostrados; IRH marcado como provisorio con la lista de datos pendientes de relevar.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU008-04",
+    "cu": "CU008",
+    "titulo": "Flujo 3a: error técnico al recuperar los datos",
+    "esperado": "Se muestra \"No se pudo cargar la información del foco seleccionado.\"",
+    "obtenido": "Mensaje exacto del caso de uso mostrado.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU008-05",
+    "cu": "CU008",
+    "titulo": "Un foco dado de baja sigue siendo consultable (trazabilidad)",
+    "esperado": "Desde \"Dados de baja\" se abre el detalle con estado Dado de baja.",
+    "obtenido": "Detalle disponible con estado \"Dado de baja\".",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-GEN-01",
+    "cu": "Transversal",
+    "titulo": "Sin errores de ejecución en la aplicación durante todas las pruebas",
+    "esperado": "No se registran excepciones en el navegador.",
+    "obtenido": "Sin excepciones.",
+    "resultado": "Pasó"
+  }
+]

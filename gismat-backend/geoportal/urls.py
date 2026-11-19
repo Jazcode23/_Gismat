@@ -34,6 +34,7 @@ geoportal = [
 
 urlpatterns = [
     path("dashboard/", v.DashboardView.as_view()),
+    path("metadatos/", v.MetadatosView.as_view()),
     path("reportes/focos/", v.ReporteFocosView.as_view()),
     path("geojson/<str:capa>/", v.GeoJSONView.as_view()),
     path("geoportal/", include(geoportal)),

@@ -105,6 +105,8 @@ def indicadores(meses=6):
         "evolucionMensual": meses,
         "evolucionNiveles": niveles_mes,
         "focosActivos": ab.count(),
+        # Cursos de agua con al menos un foco abierto (activo/pendiente) como curso más cercano
+        "cursosAfectados": ab.filter(curso_cercano__isnull=False).values("curso_cercano").distinct().count(),
         "focosInactivos": por_estado["inactivo"],
         "focosPorNivelRiesgo": por_nivel,
         "focosPorEstado": por_estado,

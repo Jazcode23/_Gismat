@@ -98,6 +98,10 @@ export interface FocoApi {
 export interface DashboardData {
   focosVigentes: number;
   focosActivos: number;
+  /** Cursos de agua con al menos un foco abierto como curso más cercano. */
+  cursosAfectados?: number;
+  /** Alertas activas (sin atender) y cuántas son críticas. */
+  alertas?: { activas: number; criticas: number };
   focosPorNivelRiesgo: Record<string, number>;
   espaciosRecuperados: number;
   irhPromedio: number;

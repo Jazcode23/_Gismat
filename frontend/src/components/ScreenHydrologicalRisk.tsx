@@ -4,6 +4,8 @@ import { GismatModal } from './GismatModal';
 import { getRelativeDateFormatted, getMonthlyRiskEvolution, getCurrentYear } from '../utils/dynamicDateUtils';
 import { useGismatStore, FocoApi } from '../services/gismatStore';
 import { API_ENABLED } from '../services/apiClient';
+import { ChartMeta, EjeTitulo } from './ChartMeta';
+import { useMetadatos, nivelDeIRH } from '../services/metadatos';
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 const MESES_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -40,6 +42,8 @@ export const ScreenHydrologicalRisk: React.FC<ScreenHydrologicalRiskProps> = ({ 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const { riesgoBasurales, dashboard, asignarCuadrilla } = useGismatStore();
+  const meta = useMetadatos();
+  const [nvCritico, nvModerado, nvBajo] = meta.irh.niveles;
 
   const toBasural = (f: FocoApi, i: number): BasuralRecord => ({
     id: f.id,
@@ -118,9 +122,19 @@ export const ScreenHydrologicalRisk: React.FC<ScreenHydrologicalRiskProps> = ({ 
   const nMod = nivelApi ? nivelApi['Moderado'] ?? 0 : 55;
   const nBajo = nivelApi ? nivelApi['Bajo'] ?? 0 : 27;
   const totalFocos = nCrit + nMod + nBajo;
+  const pctNivel = (n: number) => (totalFocos ? Math.round((n / totalFocos) * 100) : 0);
+  // KPI superiores: con API salen de los datos reales; sin API quedan los valores de demostración del diseño
+  const kpiCursos = API_ENABLED && dashboard?.cursosAfectados != null ? dashboard.cursosAfectados : 8;
+  const kpiAlertas = API_ENABLED && dashboard?.alertas ? dashboard.alertas.activas : 8;
   const DONA = 282.7;
-  const offModerado = totalFocos ? DONA * (1 - (nBajo + nMod) / totalFocos) : DONA;
-  const offCritico = totalFocos ? DONA * (1 - nCrit / totalFocos) : DONA;
+  // Cada nivel es un arco propio: largo proporcional a su cantidad y comienzo donde termina el anterior (sin superposición)
+  const arco = (n: number, desde: number) => ({
+    dasharray: `${totalFocos ? (DONA * n) / totalFocos : 0} ${DONA}`,
+    dashoffset: totalFocos ? -(DONA * desde) / totalFocos : 0,
+  });
+  const arcoCritico = arco(nCrit, 0);
+  const arcoModerado = arco(nMod, nCrit);
+  const arcoBajo = arco(nBajo, nCrit + nMod);
   // Evolución mensual: API (último IRH conocido al cierre de cada mes) o serie de demostración
   const evolucionRiesgo = API_ENABLED && dashboard
     ? dashboard.evolucionNiveles.map((e) => ({
@@ -292,6 +306,19 @@ export const ScreenHydrologicalRisk: React.FC<ScreenHydrologicalRiskProps> = ({ 
               </svg>
               {!sidebarCollapsed && <span>Trazabilidad</span>}
             </a>
+
+            {/* Basurales (ABM) */}
+            <a
+              className="flex items-center gap-3.5 px-4 py-3 rounded-xl text-white/80 hover:bg-white/10 transition-colors cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                onNavigate('CUR_05_BASURALES', 'none');
+              }}
+              href="#basurales"
+            >
+              <i className="fa-solid fa-trash-can w-5 text-center opacity-90 shrink-0"></i>
+              {!sidebarCollapsed && <span>Basurales</span>}
+            </a>
           </nav>
         </div>
 
@@ -349,14 +376,14 @@ export const ScreenHydrologicalRisk: React.FC<ScreenHydrologicalRiskProps> = ({ 
               <div className="flex justify-between items-start">
                 <div>
                   <span className="text-xs font-semibold text-white/80 uppercase tracking-wider">Nivel Crítico</span>
-                  <div className="text-4xl font-extrabold mt-1">18</div>
-                  <p className="text-xs text-white/90 mt-0.5 font-medium">Basurales de Riesgo Crítico</p>
+                  <div className="text-4xl font-extrabold mt-1">{nCrit}</div>
+                  <p className="text-xs text-white/90 mt-0.5 font-medium">Basurales de riesgo crítico (vigentes)</p>
                 </div>
                 <span className="bg-white/20 text-[10px] font-bold tracking-wider px-2 py-0.5 rounded uppercase">Urgente</span>
               </div>
               <div className="flex justify-between items-end pt-4 border-t border-white/15">
-                <span className="text-xs text-white/80 font-medium">Índice Crítico</span>
-                <span className="text-xs font-bold tracking-wide">IRH ≥ 80</span>
+                <span className="text-xs text-white/80 font-medium" title={`${meta.irh.nombre}: ${meta.irh.escala.unidad}`}>Umbral ({meta.irh.sigla}, escala {meta.irh.escala.min}-{meta.irh.escala.max})</span>
+                <span className="text-xs font-bold tracking-wide">IRH ≥ {meta.irh.umbrales.critico}</span>
               </div>
               <div className="absolute right-6 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center pointer-events-none">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -374,14 +401,14 @@ export const ScreenHydrologicalRisk: React.FC<ScreenHydrologicalRiskProps> = ({ 
               <div className="flex justify-between items-start">
                 <div>
                   <span className="text-xs font-semibold text-white/80 uppercase tracking-wider">Hidrografía</span>
-                  <div className="text-4xl font-extrabold mt-1">8</div>
-                  <p className="text-xs text-white/90 mt-0.5 font-medium">Cuerpos de Agua Afectados</p>
+                  <div className="text-4xl font-extrabold mt-1">{kpiCursos}</div>
+                  <p className="text-xs text-white/90 mt-0.5 font-medium">Cursos de agua afectados</p>
                 </div>
                 <span className="bg-white/20 text-[10px] font-bold tracking-wider px-2 py-0.5 rounded uppercase">Monitoreo</span>
               </div>
               <div className="flex justify-between items-end pt-4 border-t border-white/15">
-                <span className="text-xs text-white/80 font-medium">Estado fluvial</span>
-                <span className="text-xs font-medium tracking-wide">Canales y ríos activos</span>
+                <span className="text-xs text-white/80 font-medium">Criterio</span>
+                <span className="text-xs font-medium tracking-wide">Con ≥ 1 basural abierto cerca</span>
               </div>
               <div className="absolute right-6 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center pointer-events-none">
                 <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -394,14 +421,14 @@ export const ScreenHydrologicalRisk: React.FC<ScreenHydrologicalRiskProps> = ({ 
               <div className="flex justify-between items-start">
                 <div>
                   <span className="text-xs font-semibold text-white/80 uppercase tracking-wider">Notificaciones</span>
-                  <div className="text-4xl font-extrabold mt-1">8</div>
-                  <p className="text-xs text-white/90 mt-0.5 font-medium">Alertas Automáticas</p>
+                  <div className="text-4xl font-extrabold mt-1">{kpiAlertas}</div>
+                  <p className="text-xs text-white/90 mt-0.5 font-medium">Alertas automáticas activas</p>
                 </div>
                 <span className="bg-white/20 text-[10px] font-bold tracking-wider px-2 py-0.5 rounded uppercase">Activas</span>
               </div>
               <div className="flex justify-between items-end pt-4 border-t border-white/15">
-                <span className="text-xs text-white/80 font-medium">Ventana de tiempo</span>
-                <span className="text-xs font-medium tracking-wide">Últimas 24 horas</span>
+                <span className="text-xs text-white/80 font-medium">Alcance</span>
+                <span className="text-xs font-medium tracking-wide">{API_ENABLED && dashboard?.alertas ? `${dashboard.alertas.criticas} críticas · sin atender` : 'Sin atender'}</span>
               </div>
               <div className="absolute right-6 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center pointer-events-none">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -418,94 +445,74 @@ export const ScreenHydrologicalRisk: React.FC<ScreenHydrologicalRiskProps> = ({ 
 
           {/* Charts Section */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6" data-purpose="charts">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 flex flex-col justify-between">
+            {/* ---- Gráfico 1: distribución por nivel (dona) ---- */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 flex flex-col">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-blue-50 text-[#1976d2]">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                    />
-                    <path
-                      d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                    />
+                    <path d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                    <path d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
                   </svg>
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-slate-800">Distribución por Nivel de Riesgo</h2>
-                  <p className="text-xs text-slate-400">Total: {totalFocos} basurales monitoreados</p>
+                  <p className="text-xs text-slate-500">
+                    Qué proporción de los {totalFocos} basurales vigentes está en cada nivel de riesgo (IRH).
+                  </p>
                 </div>
               </div>
 
-              <div className="relative flex items-center justify-center my-6">
-                <svg className="w-48 h-48 transform -rotate-90" viewBox="0 0 120 120">
+              <div className="relative flex items-center justify-center my-5">
+                <svg className="w-48 h-48 transform -rotate-90" viewBox="0 0 120 120" role="img"
+                  aria-label={`Distribución de ${totalFocos} basurales: ${nCrit} críticos (${pctNivel(nCrit)}%), ${nMod} moderados (${pctNivel(nMod)}%), ${nBajo} bajos (${pctNivel(nBajo)}%)`}>
                   <circle cx="60" cy="60" fill="none" r="45" stroke="#f1f5f9" strokeWidth="12" />
-                  <circle
-                    cx="60"
-                    cy="60"
-                    fill="none"
-                    r="45"
-                    stroke="#00c853"
-                    strokeDasharray="282.7"
-                    strokeDashoffset="0"
-                    strokeLinecap="round"
-                    strokeWidth="12"
-                  />
-                  <circle
-                    cx="60"
-                    cy="60"
-                    fill="none"
-                    r="45"
-                    stroke="#ff9800"
-                    strokeDasharray="282.7"
-                    strokeDashoffset={offModerado}
-                    strokeWidth="12"
-                  />
-                  <circle
-                    cx="60"
-                    cy="60"
-                    fill="none"
-                    r="45"
-                    stroke="#e53935"
-                    strokeDasharray="282.7"
-                    strokeDashoffset={offCritico}
-                    strokeWidth="12"
-                  />
+                  <circle cx="60" cy="60" fill="none" r="45" stroke="#00c853" strokeDasharray={arcoBajo.dasharray} strokeDashoffset={arcoBajo.dashoffset} strokeWidth="12">
+                    <title>{`Bajo: ${nBajo} basurales (${pctNivel(nBajo)}%)`}</title>
+                  </circle>
+                  <circle cx="60" cy="60" fill="none" r="45" stroke="#ff9800" strokeDasharray={arcoModerado.dasharray} strokeDashoffset={arcoModerado.dashoffset} strokeWidth="12">
+                    <title>{`Moderado: ${nMod} basurales (${pctNivel(nMod)}%)`}</title>
+                  </circle>
+                  <circle cx="60" cy="60" fill="none" r="45" stroke="#e53935" strokeDasharray={arcoCritico.dasharray} strokeDashoffset={arcoCritico.dashoffset} strokeWidth="12">
+                    <title>{`Crítico: ${nCrit} basurales (${pctNivel(nCrit)}%)`}</title>
+                  </circle>
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className="text-3xl font-extrabold text-slate-800">{totalFocos}</span>
-                  <span className="text-[10px] font-bold text-slate-400 tracking-wider">TOTAL</span>
+                  <span className="text-[10px] font-bold text-slate-400 tracking-wider">BASURALES</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-center gap-6 text-xs text-slate-600 font-medium pt-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#e53935]"></span>
-                  <span>
-                    Crítico: <strong>{nCrit}</strong>
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#ff9800]"></span>
-                  <span>
-                    Moderado: <strong>{nMod}</strong>
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#00c853]"></span>
-                  <span>
-                    Bajo: <strong>{nBajo}</strong>
-                  </span>
-                </div>
-              </div>
+              {/* Leyenda: color, nivel, cantidad, porcentaje y rango de IRH que define el nivel */}
+              <table className="w-full text-xs text-slate-600">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-wide text-slate-400 border-b border-slate-100">
+                    <th className="text-left font-semibold py-1">Nivel</th>
+                    <th className="text-left font-semibold py-1">Rango de IRH</th>
+                    <th className="text-right font-semibold py-1">Basurales</th>
+                    <th className="text-right font-semibold py-1">% del total</th>
+                  </tr>
+                </thead>
+                <tbody className="font-medium">
+                  {[
+                    { n: nvCritico.nivel, c: nvCritico.color, r: nvCritico.rango, v: nCrit },
+                    { n: nvModerado.nivel, c: nvModerado.color, r: nvModerado.rango, v: nMod },
+                    { n: nvBajo.nivel, c: nvBajo.color, r: nvBajo.rango, v: nBajo },
+                  ].map((f) => (
+                    <tr key={f.n} className="border-b border-slate-50">
+                      <td className="py-1.5"><span className="inline-block w-2.5 h-2.5 rounded-full mr-1.5 align-middle" style={{ backgroundColor: f.c }}></span>{f.n}</td>
+                      <td className="py-1.5">{f.r}</td>
+                      <td className="py-1.5 text-right font-bold text-slate-800">{f.v}</td>
+                      <td className="py-1.5 text-right">{pctNivel(f.v)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <ChartMeta id="riesgo_por_nivel" />
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 flex flex-col justify-between">
+            {/* ---- Gráfico 2: evolución mensual (barras apiladas) ---- */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 flex flex-col">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-orange-50 text-[#ff9800]">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -514,58 +521,71 @@ export const ScreenHydrologicalRisk: React.FC<ScreenHydrologicalRiskProps> = ({ 
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-slate-800">Evolución Mensual del Riesgo</h2>
-                  <p className="text-xs text-slate-400">Tendencia {getCurrentYear()}</p>
+                  <p className="text-xs text-slate-500">
+                    Cuántos basurales había en cada nivel de riesgo al cierre de cada mes de {getCurrentYear()}.
+                  </p>
                 </div>
               </div>
 
-              <div className="h-48 w-full flex items-end justify-between px-3 sm:px-5 pt-4 pb-2 border-b border-slate-100 relative">
-                <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between text-[10px] text-slate-300 pointer-events-none">
-                  <span>80</span>
-                  <span>60</span>
-                  <span>40</span>
-                  <span>20</span>
-                  <span>0</span>
-                </div>
-                {evolucionRiesgo.map((m) => (
-                  <div
-                    key={m.month}
-                    className="flex flex-col items-center gap-1.5 flex-1 max-w-[42px] z-10"
-                    title={`${m.monthFull}: ${m.critico} Críticos, ${m.moderado} Moderados, ${m.bajo} Bajos (Total: ${m.critico + m.moderado + m.bajo})`}
-                  >
-                    <div
-                      className={`w-5 sm:w-6.5 rounded-sm overflow-hidden flex flex-col-reverse shadow-xs transition-all hover:opacity-90 ${
-                        m.isCurrent ? 'ring-2 ring-blue-500 ring-offset-1' : ''
-                      }`}
-                    >
-                      <div className="bg-[#00c853]" style={{ height: `${(m.bajo / maxMes) * 150}px` }}></div>
-                      <div className="bg-[#ff9800]" style={{ height: `${(m.moderado / maxMes) * 150}px` }}></div>
-                      <div className="bg-[#e53935]" style={{ height: `${(m.critico / maxMes) * 150}px` }}></div>
+              {(() => {
+                const ALTO = 150;
+                const ticks = [0, 1, 2, 3, 4].map((i) => Math.round((maxMes * i) / 4));
+                return (
+                  <div className="mt-4">
+                    <EjeTitulo className="block mb-1 ml-8">↑ N.º de basurales (apilados por nivel)</EjeTitulo>
+                    <div className="relative pl-8 pt-5">
+                      <div className="relative" style={{ height: ALTO }}>
+                        {/* Líneas guía y valores del eje vertical (misma escala que las barras) */}
+                        {ticks.map((t, i) => (
+                          <div key={i} className="absolute left-0 right-0 border-t border-dashed border-slate-200" style={{ bottom: `${(i / 4) * 100}%` }}>
+                            <span className="absolute -left-8 -translate-y-1/2 w-6 text-right text-[10px] text-slate-400">{t}</span>
+                          </div>
+                        ))}
+                        <div className="absolute inset-0 flex items-end justify-between px-1 sm:px-3">
+                          {evolucionRiesgo.map((m) => {
+                            const total = m.critico + m.moderado + m.bajo;
+                            return (
+                              <div
+                                key={m.month}
+                                className="flex flex-col items-center justify-end flex-1 max-w-[42px] z-10"
+                                title={`${m.monthFull}${m.isCurrent ? ' (mes en curso)' : ''}: ${m.critico} Críticos, ${m.moderado} Moderados, ${m.bajo} Bajos (Total: ${total})`}
+                              >
+                                <span className="text-[10px] font-bold text-slate-600 leading-none mb-0.5">{total}</span>
+                                <div className={`w-5 sm:w-6 rounded-sm overflow-hidden flex flex-col-reverse transition-all hover:opacity-90 ${m.isCurrent ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}>
+                                  <div className="bg-[#00c853]" style={{ height: `${(m.bajo / maxMes) * ALTO}px` }}></div>
+                                  <div className="bg-[#ff9800]" style={{ height: `${(m.moderado / maxMes) * ALTO}px` }}></div>
+                                  <div className="bg-[#e53935]" style={{ height: `${(m.critico / maxMes) * ALTO}px` }}></div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="flex items-start justify-between px-1 sm:px-3 pt-1.5 border-t border-slate-200">
+                        {evolucionRiesgo.map((m) => (
+                          <span
+                            key={m.month}
+                            className={`flex-1 max-w-[42px] text-center text-[11px] sm:text-xs font-medium ${m.isCurrent ? 'text-blue-700 font-bold bg-blue-50 rounded' : 'text-slate-500'}`}
+                          >
+                            {m.month}{m.isCurrent ? '*' : ''}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <span
-                      className={`text-[11px] sm:text-xs font-medium transition-colors ${
-                        m.isCurrent ? 'text-blue-700 font-bold bg-blue-50 px-1 rounded' : 'text-slate-500'
-                      }`}
-                    >
-                      {m.month}{m.isCurrent ? '*' : ''}
-                    </span>
+                    <div className="text-center mt-1">
+                      <EjeTitulo>Mes de {getCurrentYear()} → <span className="normal-case font-medium text-blue-700">* mes en curso (datos parciales)</span></EjeTitulo>
+                    </div>
                   </div>
-                ))}
+                );
+              })()}
+
+              <div className="flex items-center justify-center gap-6 text-xs text-slate-600 font-medium pt-3">
+                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#e53935]"></span><span>Crítico (IRH ≥ {meta.irh.umbrales.critico})</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#ff9800]"></span><span>Moderado ({nvModerado.rango})</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#00c853]"></span><span>Bajo (&lt; {meta.irh.umbrales.moderado})</span></div>
               </div>
 
-              <div className="flex items-center justify-center gap-6 text-xs text-slate-600 font-medium pt-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#e53935]"></span>
-                  <span>Crítico</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#ff9800]"></span>
-                  <span>Moderado</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#00c853]"></span>
-                  <span>Bajo</span>
-                </div>
-              </div>
+              <ChartMeta id="riesgo_mensual" contexto={{ anio: getCurrentYear(), mes_actual: evolucionRiesgo[evolucionRiesgo.length - 1]?.monthFull ?? 'mes actual' }} />
             </div>
           </section>
 
@@ -584,7 +604,7 @@ export const ScreenHydrologicalRisk: React.FC<ScreenHydrologicalRiskProps> = ({ 
               </div>
               <div>
                 <h2 className="text-sm font-bold text-slate-800">Ranking de Basurales Prioritarios</h2>
-                <p className="text-xs text-slate-400">Ordenados por Índice de Riesgo Hídrico (IRH)</p>
+                <p className="text-xs text-slate-500">Los {basurales.length} de mayor Índice de Riesgo Hídrico (IRH) entre los basurales abiertos. IRH: {meta.irh.escala.unidad}; la barra muestra el puntaje sobre {meta.irh.escala.max}.</p>
               </div>
             </div>
 
@@ -592,14 +612,14 @@ export const ScreenHydrologicalRisk: React.FC<ScreenHydrologicalRiskProps> = ({ 
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
-                    <th className="py-3 px-3">#</th>
+                    <th className="py-3 px-3" title="Posición en el ranking: #1 es el de mayor IRH">#</th>
                     <th className="py-3 px-3">ID / UBICACIÓN</th>
-                    <th className="py-3 px-3">IRH</th>
-                    <th className="py-3 px-3">DISTANCIA</th>
-                    <th className="py-3 px-3">CUERPO DE AGUA</th>
-                    <th className="py-3 px-3">VOLUMEN</th>
-                    <th className="py-3 px-3">PRIORIDAD</th>
-                    <th className="py-3 px-3 text-center">ALERTAS</th>
+                    <th className="py-3 px-3" title={`${meta.irh.nombre}: ${meta.irh.escala.unidad}. ${meta.irh.leyenda}`}>{meta.irh.sigla} ({meta.irh.escala.min}-{meta.irh.escala.max})</th>
+                    <th className="py-3 px-3" title="Distancia en metros desde el basural hasta el curso de agua más cercano">DIST. AL CURSO (m)</th>
+                    <th className="py-3 px-3" title="Curso de agua más cercano al basural">CURSO DE AGUA CERCANO</th>
+                    <th className="py-3 px-3" title="Volumen estimado de residuos en metros cúbicos">VOLUMEN (m³)</th>
+                    <th className="py-3 px-3" title="Nivel de riesgo según el IRH">NIVEL DE RIESGO</th>
+                    <th className="py-3 px-3 text-center" title="Alertas activas (sin atender) de este basural">ALERTAS ACTIVAS</th>
                     <th className="py-3 px-3 text-right">ACCIONES</th>
                   </tr>
                 </thead>
@@ -613,10 +633,10 @@ export const ScreenHydrologicalRisk: React.FC<ScreenHydrologicalRiskProps> = ({ 
                       </td>
                       <td className="py-4 px-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-20 bg-slate-100 rounded-full h-2 overflow-hidden">
-                            <div className="bg-[#e53935] h-2 rounded-full" style={{ width: item.irhWidth }}></div>
+                          <div className="w-20 bg-slate-100 rounded-full h-2 overflow-hidden" title={`${meta.irh.sigla} ${item.irh} de ${meta.irh.escala.max} (${nivelDeIRH(item.irh, meta).nivel})`}>
+                            <div className="h-2 rounded-full" style={{ width: item.irhWidth, backgroundColor: nivelDeIRH(item.irh, meta).color }}></div>
                           </div>
-                          <span className="font-bold text-red-600">{item.irh}</span>
+                          <span className="font-bold" style={{ color: nivelDeIRH(item.irh, meta).color }}>{item.irh}<span className="text-[10px] font-medium text-slate-400">/100</span></span>
                         </div>
                       </td>
                       <td className="py-4 px-3 font-semibold text-red-500">{item.distancia}</td>
