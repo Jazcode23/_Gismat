@@ -206,12 +206,11 @@ export const FOTO_MAX_BYTES = 5 * 1024 * 1024;
 /** El backend devuelve la foto con URL absoluta; se usa solo la ruta (/media/...) para que pase por el proxy del frontend. */
 export function fotoSrc(url: string | null | undefined): string | null {
   if (!url) return null;
-  // La API puede estar en otro dominio (producción): las fotos se piden siempre al origen de la API, siempre por https
-  // si la página es https, aunque el backend (detrás del proxy) arme la URL con http.
+  // Las fotos se piden por la misma base que la API (API_URL + /media/...): sirve tanto si la API está en otro dominio
+  // como si el frontend solo reenvía /api/* al backend. Se descarta el origen que arme el servidor (puede venir con http).
   try {
-    const ruta = new URL(url, window.location.origin).pathname;
-    const origen = /^https?:\/\//.test(API_URL) ? new URL(API_URL).origin : '';
-    return origen + ruta;
+    const ruta = new URL(url, window.location.origin).pathname.replace(/^\/(?:api\/)?media\//, '');
+    return `${API_URL}/media/${ruta}`;
   } catch { return url; }
 }
 
