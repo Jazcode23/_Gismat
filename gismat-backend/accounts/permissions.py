@@ -1,7 +1,7 @@
 """Permisos por rol. La matriz vive en un único lugar (PERMISOS) para poder auditarla.
 
 Acciones:  ver, crear_foco, editar_foco, baja_foco, intervenir, asignar,
-           validar_ia, reportes, usuarios
+           validar_ia, reportes, usuarios, atender_alerta
 """
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
@@ -9,10 +9,10 @@ from .models import Roles
 
 PERMISOS = {
     Roles.ADMINISTRADOR: {"ver", "crear_foco", "editar_foco", "baja_foco", "intervenir",
-                          "asignar", "validar_ia", "reportes", "usuarios"},
+                          "asignar", "validar_ia", "reportes", "usuarios", "atender_alerta"},
     Roles.OPERADOR: {"ver", "crear_foco", "editar_foco", "intervenir", "validar_ia"},
     Roles.ANALISTA: {"ver", "crear_foco", "editar_foco", "asignar", "validar_ia", "reportes"},
-    Roles.SUPERVISOR: {"ver", "asignar", "reportes"},
+    Roles.SUPERVISOR: {"ver", "asignar", "reportes", "atender_alerta"},
 }
 
 

@@ -13,6 +13,8 @@ import {
   GeoportalStats,
 } from '../../types/geoportal';
 import { geoportalService, SearchResultItem } from '../../services/geoportalService';
+import { API_ENABLED } from '../../services/apiClient';
+import { permisosUsuario } from '../../services/basuralesService';
 import { GeoportalHeader } from './GeoportalHeader';
 import { GeoportalMap } from './GeoportalMap';
 import { LayerControlPanel } from './LayerControlPanel';
@@ -307,6 +309,12 @@ export const ScreenGeoportal: React.FC<ScreenGeoportalProps> = ({ onNavigate }) 
         isOpen={alertsDrawerOpen}
         onClose={() => setAlertsDrawerOpen(false)}
         alertas={alertas}
+        puedeAtender={API_ENABLED && permisosUsuario().puedeAtenderAlerta}
+        onAtender={async (a) => {
+          if (a.pk === undefined) return;
+          await geoportalService.atenderAlerta(a.pk);
+          setAlertas(await geoportalService.getAlertas());
+        }}
         onSelectAlertaFoco={(focoId, coords) => {
           if (coords) {
             setCenterTarget({ coords, zoom: 16 });

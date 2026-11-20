@@ -188,6 +188,11 @@ export class GeoportalService {
     return Promise.resolve([...MOCK_BARRIOS]);
   }
 
+  /** CU016/CU018: marca una alerta como atendida (deja de figurar entre las activas). */
+  async atenderAlerta(pk: number): Promise<void> {
+    if (this.useApiBackend) await api(`/alertas/${pk}/atender/`, { body: {} });
+  }
+
   /**
    * Obtiene las alertas de riesgo hidrológico y ambiental de GISMAT
    */
