@@ -1,0 +1,74 @@
+[
+  {
+    "id": "CP-CU016-01",
+    "cu": "CU016",
+    "titulo": "Un foco que alcanza el IRH crítico genera una alerta automática",
+    "esperado": "Al registrar un foco con IRH crítico se genera una alerta crítica asociada al foco.",
+    "obtenido": "Foco BR-013 con IRH 92.9 (Crítico) -> alerta crítica generada: \"Alerta hidrológica crítica: foco BR-013 a 53 m de Río Salí (Cauce Principal Troncal) (IRH 92.9)\".",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU016-02",
+    "cu": "CU016",
+    "titulo": "El Supervisor visualiza la alerta en su panel con la recomendación accionable",
+    "esperado": "La campana muestra la alerta; el panel incluye la recomendación (al menos una acción) y que está dirigida al Supervisor.",
+    "obtenido": "Alerta visible en el panel del Supervisor con 2 acción(es) recomendada(s):   Limpieza prioritaria con maquinaria pesada (retroexcavadora y camiones volcadores) Notificación al organismo ambiental correspondiente por residuos de peligrosidad e · Dirigida a: Supervisor.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU016-03",
+    "cu": "CU016",
+    "titulo": "Alerta de advertencia (datos incompletos) con recomendación de relevamiento",
+    "esperado": "Un foco con IRH alto pero datos incompletos genera una advertencia (no crítica) cuya recomendación pide relevar los datos que faltan.",
+    "obtenido": "Alerta de ADVERTENCIA para BR-014 con la recomendación: \"Relevar en campo permeabilidad del suelo, tipo de residuo, volumen para confirmar el nivel de riesgo y priorizar la intervención.\".",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU016-04",
+    "cu": "CU016",
+    "titulo": "El panel ordena las alertas por prioridad",
+    "esperado": "Las alertas críticas (\"Prioridad Alta\") van antes que las de advertencia.",
+    "obtenido": "Orden de prioridad correcto en 6 alertas (0,0,0,0,0,1).",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU016-05",
+    "cu": "CU016",
+    "titulo": "El Supervisor marca la alerta como atendida",
+    "esperado": "La alerta deja de figurar en el panel y en la lista de activas; el contador baja.",
+    "obtenido": "Alerta atendida: sale del panel, queda \"atendida\" en el servidor y el contador pasa de 6 a 5.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU016-06",
+    "cu": "CU016",
+    "titulo": "El Operador ve las alertas pero no puede marcarlas como atendidas",
+    "esperado": "Sin botón \"Marcar como atendida\" y la API responde 403.",
+    "obtenido": "El operador consulta las alertas; sin botón de atender; API: 403.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU016-07",
+    "cu": "CU016",
+    "titulo": "Error técnico al marcar la alerta como atendida",
+    "esperado": "Se muestra un mensaje de error y la alerta permanece activa.",
+    "obtenido": "Mensaje \"No se pudo marcar la alerta como atendida, intente nuevamente.\"; la alerta sigue activa.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU016-08",
+    "cu": "CU016",
+    "titulo": "Al bajar el IRH por debajo del umbral la alerta se cierra sola",
+    "esperado": "Tras sanear el foco la alerta crítica deja de estar activa.",
+    "obtenido": "Foco BR-016 saneado (IRH 76): la alerta crítica pasó a \"atendida\" automáticamente.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU016-09",
+    "cu": "CU016",
+    "titulo": "Sin errores de ejecución en la aplicación",
+    "esperado": "No se registran excepciones en el navegador.",
+    "obtenido": "Sin excepciones.",
+    "resultado": "Pasó"
+  }
+]

@@ -119,6 +119,11 @@ export interface EnvironmentalAlert {
   focoId?: string;
   microcuencaId?: string;
   coordenadas?: [number, number];
+  /** Identificador numérico (para marcarla como atendida), recomendación accionable, estado y rol destinatario (CU016). */
+  pk?: number;
+  recomendacion?: string;
+  estado?: 'activa' | 'atendida';
+  destinatario?: string;
 }
 
 export interface GeoportalStats {

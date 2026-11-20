@@ -212,7 +212,7 @@ class CuadrillaViewSet(SoloLectura):
 class AlertaViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = s.AlertaSerializer
     permission_classes = [AccionPermitida]
-    acciones = {"list": "ver", "retrieve": "ver", "atender": "editar_foco"}
+    acciones = {"list": "ver", "retrieve": "ver", "atender": "atender_alerta"}
 
     def get_queryset(self):
         qs = m.Alerta.objects.select_related("foco", "microcuenca")
@@ -224,9 +224,11 @@ class AlertaViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=["post"])
     def atender(self, request, pk=None):
+        """CU016/CU018: el Supervisor marca la alerta como atendida (deja de figurar entre las activas). Idempotente."""
         a = self.get_object()
-        a.estado = "atendida"
-        a.save(update_fields=["estado"])
+        if a.estado != "atendida":
+            a.estado = "atendida"
+            a.save(update_fields=["estado"])
         return Response(s.AlertaSerializer(a).data)
 
 

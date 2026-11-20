@@ -322,11 +322,16 @@ class AlertaSerializer(serializers.ModelSerializer):
     focoId = serializers.CharField(source="foco.codigo")
     microcuencaId = serializers.SerializerMethodField()
     coordenadas = serializers.SerializerMethodField()
+    destinatario = serializers.SerializerMethodField()
 
     class Meta:
         model = m.Alerta
-        fields = ["id", "titulo", "descripcion", "tipo", "nivel", "fecha", "focoId", "microcuencaId", "coordenadas",
-                  "recomendacion", "estado"]
+        fields = ["id", "pk", "titulo", "descripcion", "tipo", "nivel", "fecha", "focoId", "microcuencaId", "coordenadas",
+                  "recomendacion", "estado", "destinatario"]
+
+    def get_destinatario(self, o):
+        # CU016: las alertas automáticas están dirigidas al Supervisor (se visualizan en la plataforma)
+        return "Supervisor"
 
     def get_id(self, o):
         return f"ALT-{o.fecha.year}-{o.pk:03d}"
