@@ -1,8 +1,8 @@
 # Casos de prueba – CU015 Validar detección de IA
 
-Ejecutados en navegador real (Playwright) contra el backend Django + PostGIS, con los roles operador, analista y supervisor. Las detecciones se cargaron por la misma API que usaría el módulo de IA.
+Ejecutados en navegador real (Playwright) contra el backend Django + PostGIS, con los roles operador, analista y supervisor. Las detecciones de prueba se cargaron por la misma API que usaría el módulo de IA.
 
-**Resultado: 13 de 13 casos pasaron.**
+**Resultado: 17 de 17 casos pasaron.**
 
 | ID | Caso | Resultado esperado | Resultado obtenido | Estado |
 |---|---|---|---|---|
@@ -18,17 +18,22 @@ Ejecutados en navegador real (Playwright) contra el backend Django + PostGIS, co
 | CP-CU015-10 | Flujo 6a: tras el error se puede reintentar y la confirmación funciona | Al reintentar sin la falla, la detección se confirma. | Reintento exitoso: foco BR-014, IRH 49.3. | Pasó |
 | CP-CU015-11 | Una detección ya resuelta no puede volver a validarse | Al abrir una detección confirmada o descartada no se ofrecen los botones y se indica su estado. | Sin botones; la API rechaza confirmar una descartada (400). | Pasó |
 | CP-CU015-12 | Rol Analista también puede validar; Supervisor solo consulta | El analista confirma; el supervisor ve la detección pero no puede confirmar ni descartar (UI y API 403). | Analista: puede validar. Supervisor: consulta; confirmar/descartar -> 403 y sin cambios. | Pasó |
-| CP-CU015-13 | Sin errores de ejecución en la aplicación | No se registran excepciones en el navegador. | Sin excepciones. | Pasó |
+| CP-CU015-13 | La pestaña "Nuevos" explica que sirve para confirmar o descartar | En "Nuevos" se indica que son pendientes de validación y que cada una se confirma o se descarta; la fila ofrece "Validar". | Banner "Nuevos = pendientes de validación" con las acciones confirmar / descartar; botón "Validar" en cada fila pendiente; la ayuda solo aparece en "Nuevos". | Pasó |
+| CP-CU015-14 | Procesar nuevas imágenes: el módulo de IA (simulado) genera detecciones preliminares pendientes | Se muestra el avance del análisis, se generan detecciones nuevas marcadas como SIMULADO y quedan en "Nuevos" para validar. | El análisis generó 4 detecciones preliminares (pendientes 6 -> 10), todas marcadas SIMULADO; "Revisar pendientes" lleva a la pestaña Nuevos. | Pasó |
+| CP-CU015-15 | Las detecciones generadas por el análisis se pueden validar (confirmar y descartar) | Una generada se confirma (crea foco con IRH) y otra se descarta. | AI-013 confirmada -> foco MB-015 (IRH 51.6); AI-012 descartada; se creó un solo foco. | Pasó |
+| CP-CU015-16 | El supervisor no puede ejecutar el análisis | El botón "Procesar Nuevas Imágenes" está deshabilitado y la API responde 403. | Botón deshabilitado; API: 403. | Pasó |
+| CP-CU015-17 | Sin errores de ejecución en la aplicación | No se registran excepciones en el navegador. | Sin excepciones. | Pasó |
 
-Además hay 7 pruebas automáticas en el backend (`geoportal/tests/test_cu015_validar_deteccion.py`): confirmar crea foco con IRH, confirmar dos veces no duplica, descartar, no descartar una ya confirmada, fallo técnico atómico (sin foco huérfano y la detección sigue pendiente), permisos por rol y datos de ubicación/fecha.
+Además hay 10 pruebas automáticas en el backend (`geoportal/tests/test_cu015_validar_deteccion.py`): confirmar crea foco con IRH, confirmar dos veces no duplica, descartar, no descartar una ya confirmada, fallo técnico atómico (sin foco huérfano y la detección sigue pendiente), permisos por rol, datos de ubicación/fecha y el análisis simulado.
 
 ## Cómo ejecutarlos
 Con backend y frontend levantados: `GISMAT_PASS=<clave> node ejecutar-casos-cu015.js` (requiere `npm i playwright`).
 
-## Notas y límites
-- La imagen satelital es una imagen aérea de referencia (Esri) centrada en la ubicación sugerida, con el punto sugerido y la superficie detectada dibujados. No es la captura exacta del satélite que originó la detección: esa captura no se almacena. La *fecha de captura* que se muestra es la fecha de la detección.
-- El entorno de prueba no tiene salida a internet hacia el proveedor de imágenes, por eso en las capturas el mapa aparece sin imagen de fondo. Se verificó que el visor solicita las teselas satelitales, que dibuja la ubicación y la superficie y que se puede ampliar.
-- Los datos cargados por la demo son simulados y se identifican como tales en pantalla.
+## Qué es real y qué es simulado
+- **Real:** el flujo de validación (listar pendientes, ver imagen y ubicación, ampliar, confirmar → foco + IRH, descartar), los permisos por rol, la atomicidad ante errores y el punto de entrada para el módulo de IA (`POST /api/detecciones-ia/`).
+- **Simulado:** la generación de las detecciones. No hay un modelo de IA ni procesamiento de imágenes Sentinel-2: el botón *Procesar Nuevas Imágenes* ejecuta un análisis de demostración (`POST /api/detecciones-ia/analizar/`) que crea detecciones preliminares plausibles cerca de los focos conocidos. Todas quedan marcadas como SIMULADO en pantalla y en las exportaciones.
+- **Imagen satelital:** es una imagen aérea de referencia (Esri) centrada en la ubicación sugerida, con el punto sugerido y la superficie detectada dibujados. No es la captura exacta que originó la detección. La *fecha de captura* mostrada es la fecha de la detección.
+- El entorno de prueba no tiene salida a internet hacia el proveedor de imágenes, por eso en las capturas el mapa aparece sin fondo. Se verificó que el visor solicita las teselas, dibuja la ubicación y la superficie y se puede ampliar.
 
 ## Defectos encontrados y corregidos al implementar el caso de uso
 - El botón DESCARTAR solo cerraba la ventana: no descartaba nada. Ahora descarta (con confirmación), persiste el estado y la detección sale de las pendientes.
@@ -37,3 +42,5 @@ Con backend y frontend levantados: `GISMAT_PASS=<clave> node ejecutar-casos-cu01
 - Confirmar no era atómico: un fallo a mitad de camino podía dejar un foco sin vincular. Ahora es todo o nada.
 - El error técnico usaba una alerta del navegador; ahora se muestra el mensaje del caso de uso dentro de la ventana.
 - El supervisor veía los botones de confirmar y descartar aunque el servidor los rechazaba (403). Ahora solo consulta.
+- El botón *Procesar Nuevas Imágenes* solo mostraba un aviso del navegador. Ahora ejecuta el análisis simulado.
+- La pestaña *Nuevos* no explicaba su función. Ahora indica que son detecciones pendientes de validación que se confirman o se descartan.

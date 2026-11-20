@@ -495,6 +495,35 @@ class GismatStore {
     this.notify();
   }
 
+  /** Análisis satelital SIMULADO (demostración): el servidor genera detecciones preliminares nuevas, pendientes de validación. */
+  public async runAnalysis(): Promise<{ creadas: number }> {
+    if (API_ENABLED) {
+      const r = await api<{ creadas: number }>('/detecciones-ia/analizar/', { body: {} });
+      this.aiDetections = await api<AIDetectionItem[]>('/detecciones-ia/?estado=todos');
+      await this.refreshResumen();
+      this.notify();
+      return { creadas: r.creadas };
+    }
+    const base = this.aiDetections[0];
+    if (!base) return { creadas: 0 };
+    const nuevas: AIDetectionItem[] = [1, 2, 3].map((k) => ({
+      ...base,
+      id: `AI-${900 + this.aiDetections.length + k}`,
+      location: `Zona analizada ${k}`,
+      statusType: 'nuevo',
+      statusText: 'Nuevo / Pendiente IRH',
+      statusSub: 'Cálculo IRH al confirmar foco',
+      dotColor: 'bg-blue-500 ring-2 ring-blue-500/30',
+      focoId: null,
+      irh: null,
+      riesgo: null,
+      origen: 'simulado',
+    }));
+    this.aiDetections = [...nuevas, ...this.aiDetections];
+    this.notify();
+    return { creadas: nuevas.length };
+  }
+
   // Actions
   public async addInterventionToFoco(
     focoId: string,
@@ -598,6 +627,7 @@ export function useGismatStore() {
       gismatStore.addInterventionToFoco(focoId, action),
     confirmDetection: (id: string) => gismatStore.confirmDetection(id),
     discardDetection: (id: string) => gismatStore.discardDetection(id),
+    runAnalysis: () => gismatStore.runAnalysis(),
     hydrate: () => gismatStore.hydrate(),
     dashboard: gismatStore.getDashboard(),
     riesgoBasurales: gismatStore.getRiesgoBasurales(),

@@ -18,7 +18,7 @@ from . import models as m
 from . import serializers as s
 from .filters import filtrar_detecciones, filtrar_focos
 from .services import alertas as srv_alertas
-from .services import dashboard, geo, reportes
+from .services import analisis_ia, dashboard, geo, reportes
 from .services.focos import dar_de_baja, recalcular, registrar_intervencion
 from .services.metadatos import metadatos as metadatos_servicio
 
@@ -439,7 +439,7 @@ class DeteccionIAViewSet(viewsets.ViewSet):
     permission_classes = [AccionPermitida]
     # "exportar" pide el mismo permiso que "list": se descarga exactamente lo que el usuario ya puede ver en pantalla.
     acciones = {"list": "ver", "create": "validar_ia", "confirmar": "validar_ia", "descartar": "validar_ia",
-                "exportar": "ver"}
+                "exportar": "ver", "analizar": "validar_ia"}
 
     def list(self, request):
         qs = filtrar_detecciones(m.DeteccionIA.objects.select_related("foco"), request.query_params,
@@ -450,6 +450,21 @@ class DeteccionIAViewSet(viewsets.ViewSet):
         ser = s.DeteccionSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         return Response(s.DeteccionSerializer(ser.save()).data, status=201)
+
+    @action(detail=False, methods=["post"])
+    def analizar(self, request):
+        """POST /api/detecciones-ia/analizar/ {cantidad?}: ejecuta un análisis satelital SIMULADO (demostración) que genera
+        detecciones preliminares nuevas, pendientes de validación (CU015). Quedan con origen = simulado."""
+        try:
+            cantidad = int(request.data.get("cantidad")) if request.data.get("cantidad") not in (None, "") else None
+        except (TypeError, ValueError):
+            raise ValidationError({"cantidad": "Debe ser un número entero."})
+        creadas = analisis_ia.ejecutar_analisis_simulado(cantidad)
+        if not creadas:
+            raise ValidationError("No hay focos cargados para ubicar la zona de análisis.")
+        return Response({"creadas": len(creadas), "simulado": True,
+                         "detecciones": [s.DeteccionSerializer(d).data for d in creadas],
+                         "mensaje": f"El análisis generó {len(creadas)} detecciones preliminares pendientes de validación."}, status=201)
 
     @action(detail=False, methods=["get"])
     def exportar(self, request):
