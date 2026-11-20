@@ -94,3 +94,36 @@ class ValidarDeteccionTests(BaseGismat):
         self.assertEqual(self.client.get("/api/detecciones-ia/").status_code, 200)  # puede consultar
         det.refresh_from_db()
         self.assertEqual(det.estado, "nuevo")
+
+
+class AnalisisSimuladoTests(BaseGismat):
+    """El 'módulo de IA' simulado genera detecciones preliminares nuevas que luego se validan."""
+
+    def test_analizar_crea_detecciones_nuevas_simuladas_y_validables(self):
+        self.crear_foco()  # el análisis se ubica cerca de los focos conocidos
+        self.login_as("operador")
+        antes = m.DeteccionIA.objects.filter(estado="nuevo").count()
+        r = self.client.post("/api/detecciones-ia/analizar/", {"cantidad": 4}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        d = r.json()
+        self.assertEqual(d["creadas"], 4)
+        self.assertTrue(d["simulado"])
+        self.assertEqual(m.DeteccionIA.objects.filter(estado="nuevo").count(), antes + 4)
+        for x in d["detecciones"]:
+            self.assertEqual(x["statusType"], "nuevo")
+            self.assertEqual(x["origen"], "simulado")  # nunca se hace pasar por real
+            self.assertTrue(-27.0 < x["latitud"] < -26.6 and -65.5 < x["longitud"] < -65.0)
+        # y se pueden validar: confirmar la primera, descartar la segunda
+        a, b = d["detecciones"][:2]
+        self.assertEqual(self.client.post(f"/api/detecciones-ia/{a['id']}/confirmar/", {}, format="json").json()["statusType"], "confirmado")
+        self.assertEqual(self.client.post(f"/api/detecciones-ia/{b['id']}/descartar/", {}, format="json").json()["statusType"], "descartado")
+
+    def test_cantidad_se_limita_y_se_valida(self):
+        self.crear_foco()
+        self.login_as("operador")
+        self.assertEqual(self.client.post("/api/detecciones-ia/analizar/", {"cantidad": 500}, format="json").json()["creadas"], 8)
+        self.assertEqual(self.client.post("/api/detecciones-ia/analizar/", {"cantidad": "abc"}, format="json").status_code, 400)
+
+    def test_supervisor_no_puede_ejecutar_el_analisis(self):
+        self.login_as("supervisor")
+        self.assertEqual(self.client.post("/api/detecciones-ia/analizar/", {}, format="json").status_code, 403)

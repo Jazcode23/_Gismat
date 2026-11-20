@@ -98,6 +98,38 @@
   {
     "id": "CP-CU015-13",
     "cu": "CU015",
+    "titulo": "La pestaña \"Nuevos\" explica que sirve para confirmar o descartar",
+    "esperado": "En \"Nuevos\" se indica que son pendientes de validación y que cada una se confirma o se descarta; la fila ofrece \"Validar\".",
+    "obtenido": "Banner \"Nuevos = pendientes de validación\" con las acciones confirmar / descartar; botón \"Validar\" en cada fila pendiente; la ayuda solo aparece en \"Nuevos\".",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-14",
+    "cu": "CU015",
+    "titulo": "Procesar nuevas imágenes: el módulo de IA (simulado) genera detecciones preliminares pendientes",
+    "esperado": "Se muestra el avance del análisis, se generan detecciones nuevas marcadas como SIMULADO y quedan en \"Nuevos\" para validar.",
+    "obtenido": "El análisis generó 4 detecciones preliminares (pendientes 6 -> 10), todas marcadas SIMULADO; \"Revisar pendientes\" lleva a la pestaña Nuevos.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-15",
+    "cu": "CU015",
+    "titulo": "Las detecciones generadas por el análisis se pueden validar (confirmar y descartar)",
+    "esperado": "Una generada se confirma (crea foco con IRH) y otra se descarta.",
+    "obtenido": "AI-013 confirmada -> foco MB-015 (IRH 51.6); AI-012 descartada; se creó un solo foco.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-16",
+    "cu": "CU015",
+    "titulo": "El supervisor no puede ejecutar el análisis",
+    "esperado": "El botón \"Procesar Nuevas Imágenes\" está deshabilitado y la API responde 403.",
+    "obtenido": "Botón deshabilitado; API: 403.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-17",
+    "cu": "CU015",
     "titulo": "Sin errores de ejecución en la aplicación",
     "esperado": "No se registran excepciones en el navegador.",
     "obtenido": "Sin excepciones.",

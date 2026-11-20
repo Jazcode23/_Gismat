@@ -36,7 +36,7 @@ const fechaCorta = (iso: string | undefined) => {
 };
 
 export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNavigate }) => {
-  const { aiDetections: aiDetectionsRaw, confirmDetection, discardDetection, activeMonthName, previousMonthName } = useGismatStore();
+  const { aiDetections: aiDetectionsRaw, confirmDetection, discardDetection, runAnalysis, activeMonthName, previousMonthName } = useGismatStore();
 
   // CORRECCIÓN: el store puede devolver undefined al inicio (antes de cargar datos)
   const meta = useMetadatos();
@@ -50,6 +50,19 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
   const [filtrosOpen, setFiltrosOpen] = useState(false);
   const [avanzados, setAvanzados] = useState<FiltrosAvanzados>(AVANZADOS_VACIOS);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Análisis satelital simulado ("Procesar Nuevas Imágenes"): pasos de avance y resultado
+  const PASOS_ANALISIS = [
+    'Obteniendo las escenas Sentinel-2 más recientes de la cuenca',
+    'Preprocesando bandas (corrección atmosférica, NDVI / SWIR)',
+    'Ejecutando el modelo de detección (transfer learning)',
+    'Georreferenciando los posibles focos de residuos',
+  ];
+  const [analisisAbierto, setAnalisisAbierto] = useState(false);
+  const [analisisPaso, setAnalisisPaso] = useState(0);
+  const [analisisResultado, setAnalisisResultado] = useState<{ creadas: number } | null>(null);
+  const [analisisError, setAnalisisError] = useState('');
+  const [ultimoAnalisis, setUltimoAnalisis] = useState('');
 
   // CU015: validación de la detección (confirmar / descartar), ampliar la imagen y mensajes de error
   const [errorValidacion, setErrorValidacion] = useState('');
@@ -110,6 +123,24 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
   const esPendiente = detActual?.statusType === 'nuevo';
   const puedeValidar = !API_ENABLED || permisosUsuario().puedeValidarIA;  // el supervisor solo consulta (el servidor responde 403)
   const ubicacion = detActual ? ubicacionDe(detActual) : null;
+
+  const handleRunAnalysis = async () => {
+    setAnalisisAbierto(true);
+    setAnalisisPaso(0);
+    setAnalisisResultado(null);
+    setAnalisisError('');
+    const avance = setInterval(() => setAnalisisPaso((p) => Math.min(p + 1, PASOS_ANALISIS.length - 1)), 900);
+    try {
+      const [r] = await Promise.all([runAnalysis(), new Promise((ok) => setTimeout(ok, PASOS_ANALISIS.length * 900))]);
+      setAnalisisPaso(PASOS_ANALISIS.length);
+      setAnalisisResultado(r);
+      setUltimoAnalisis(new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }));
+    } catch {
+      setAnalisisError('No se pudo completar el análisis, intente nuevamente.');
+    } finally {
+      clearInterval(avance);
+    }
+  };
 
   const handleConfirmDetection = async () => {
     // CORRECCIÓN: no hacer nada si no hay detección seleccionada
@@ -386,7 +417,10 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
               </div>
               <button
                 className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 shadow-sm flex items-center gap-2 cursor-pointer"
-                onClick={() => alert('Sincronizando últimas imágenes satelitales Sentinel-2 para la cuenca de Tucumán...')}
+                data-testid="procesar-imagenes"
+                disabled={!puedeValidar || (analisisAbierto && !analisisResultado && !analisisError)}
+                title={puedeValidar ? 'Ejecuta el análisis de imágenes satelitales y genera nuevas detecciones preliminares' : 'Tu rol no puede ejecutar el análisis'}
+                onClick={handleRunAnalysis}
               >
                 <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -398,6 +432,7 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
                 </svg>
                 Procesar Nuevas Imágenes
               </button>
+              {ultimoAnalisis && <span className="text-[10px] text-slate-400">Último análisis: {ultimoAnalisis}</span>}
             </div>
           </div>
 
@@ -692,6 +727,7 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
                     className={`px-3 py-1 rounded-md cursor-pointer transition ${
                       filterTab === 'nuevos' ? 'bg-white text-slate-900 shadow-xs' : 'hover:text-slate-900'
                     }`}
+                    title="Detecciones generadas por el módulo de IA que esperan que un operador las confirme o las descarte"
                     onClick={() => setFilterTab('nuevos')}
                   >
                     Nuevos ({stats.nuevos})
@@ -757,6 +793,14 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
               </div>
             </div>
 
+            {filterTab === 'nuevos' && (
+              <div data-testid="ayuda-nuevos" className="mx-5 mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-[11.5px] leading-snug text-blue-900">
+                <strong>Nuevos = pendientes de validación.</strong> Son las detecciones preliminares generadas por el módulo de IA que todavía no revisó nadie.
+                Abrí cada una con <strong>«Validar»</strong>, revisá la imagen satelital y la ubicación, y <strong>confirmala</strong> (se registra como foco y se calcula su IRH) o{' '}
+                <strong>descartala</strong> si no corresponde a un foco de residuos. Al validarla deja de figurar en esta lista.
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
@@ -777,7 +821,7 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
                   {filteredDetections.length === 0 && (
                     <tr>
                       <td colSpan={10} className="py-8 px-5 text-center text-slate-400 text-xs">
-                        No hay detecciones para mostrar.
+                        {filterTab === 'nuevos' ? 'No hay detecciones pendientes de validación. Podés ejecutar un nuevo análisis con «Procesar Nuevas Imágenes».' : 'No hay detecciones para mostrar.'}
                       </td>
                     </tr>
                   )}
@@ -869,7 +913,7 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
                               strokeWidth="1.8"
                             />
                           </svg>
-                          Ver detalles
+                          {row.statusType === 'nuevo' && puedeValidar ? 'Validar' : 'Ver detalles'}
                         </button>
                       </td>
                     </tr>
@@ -1131,6 +1175,73 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
             </div>
           </div>
         )}
+      </GismatModal>
+
+      {/* Análisis satelital simulado: avance y resultado */}
+      <GismatModal
+        isOpen={analisisAbierto}
+        onClose={() => {
+          if (analisisResultado || analisisError) setAnalisisAbierto(false);
+        }}
+        id="analisis-modal"
+        headerTheme="dark"
+        title="Procesar nuevas imágenes satelitales"
+        subtitle="Detección preliminar de posibles focos de residuos"
+        maxWidthClass="w-[92vw] max-w-[520px]"
+      >
+        <div className="space-y-4" data-testid="analisis-ia">
+          <ol className="space-y-2.5">
+            {PASOS_ANALISIS.map((paso, i) => {
+              const hecho = analisisPaso > i || !!analisisResultado;
+              const actual = analisisPaso === i && !analisisResultado && !analisisError;
+              return (
+                <li key={paso} className="flex items-center gap-2.5 text-xs">
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${hecho ? 'bg-emerald-500 text-white' : actual ? 'bg-blue-100 text-blue-700 animate-pulse' : 'bg-slate-100 text-slate-400'}`}>
+                    {hecho ? '✓' : i + 1}
+                  </span>
+                  <span className={hecho ? 'text-slate-700' : actual ? 'text-slate-900 font-semibold' : 'text-slate-400'}>{paso}</span>
+                </li>
+              );
+            })}
+          </ol>
+          {analisisError && (
+            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-medium text-red-700">{analisisError}</div>
+          )}
+          {analisisResultado && (
+            <div data-testid="analisis-resultado" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-xs text-emerald-900">
+              <p className="font-bold">
+                {analisisResultado.creadas > 0
+                  ? `El análisis generó ${analisisResultado.creadas} detecciones preliminares nuevas.`
+                  : 'El análisis terminó sin detecciones nuevas.'}
+              </p>
+              {analisisResultado.creadas > 0 && (
+                <p className="mt-1 leading-snug">Quedaron en <strong>Nuevos</strong>, pendientes de validación: confirmalas para registrarlas como foco o descartalas.</p>
+              )}
+            </div>
+          )}
+          <p className="text-[10px] leading-snug text-slate-400">
+            Módulo de IA en modo demostración: las detecciones se generan de forma simulada y se identifican como SIMULADO. El módulo real se integra enviando las detecciones al mismo punto de entrada.
+          </p>
+          <div className="flex justify-end gap-2.5">
+            {analisisResultado && analisisResultado.creadas > 0 && (
+              <button
+                data-testid="revisar-pendientes"
+                className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm cursor-pointer"
+                onClick={() => {
+                  setFilterTab('nuevos');
+                  setAnalisisAbierto(false);
+                }}
+              >
+                Revisar pendientes
+              </button>
+            )}
+            {(analisisResultado || analisisError) && (
+              <button className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer" onClick={() => setAnalisisAbierto(false)}>
+                Cerrar
+              </button>
+            )}
+          </div>
+        </div>
       </GismatModal>
 
       {/* CU015 5a: ampliar la imagen satelital y consultar la fecha de captura antes de decidir */}

@@ -24,8 +24,8 @@ async function sesion(usuario) {
   await p.goto(WEB + '/'); await p.waitForTimeout(900);
   await p.fill('input[placeholder="usuarioejemplo"]', usuario); await p.fill('input[placeholder="••••••••"]', PASS);
   await p.click('button[type=submit]'); await p.waitForTimeout(2000);
-  if (!(await p.locator('text=Ver detalles').first().isVisible().catch(() => false))) { await p.locator('text=Detecciones IA').first().click().catch(() => {}); }
-  await p.waitForSelector('text=Ver detalles', { timeout: 15000 });
+  if (!(await p.locator('button:has-text("Ver detalles"), button:has-text("Validar")').first().isVisible().catch(() => false))) { await p.locator('text=Detecciones IA').first().click().catch(() => {}); }
+  await p.waitForSelector('button:has-text("Ver detalles"), button:has-text("Validar")', { timeout: 15000 });
   return p;
 }
 async function caso(id, titulo, esperado, fn) {
@@ -46,7 +46,7 @@ async function cerrar() {
 }
 const fila = (p, texto) => p.locator(`tbody tr:has-text("${texto}")`);
 async function pestana(p, nombre) { await p.locator(`button:has-text("${nombre}")`).first().click(); await p.waitForTimeout(500); }
-async function abrir(p, texto) { await pestana(p, 'Todos'); await fila(p, texto).locator('text=Ver detalles').click(); await p.waitForSelector('[data-testid=fecha-captura]'); await p.waitForTimeout(600); }
+async function abrir(p, texto) { await pestana(p, 'Todos'); await fila(p, texto).locator('button:has-text("Validar"), button:has-text("Ver detalles")').first().click(); await p.waitForSelector('[data-testid=fecha-captura]'); await p.waitForTimeout(600); }
 async function recargar(p) { await pestana(p, 'Confirmados'); await pestana(p, 'Todos'); }
 
 (async () => {
@@ -230,8 +230,73 @@ async function recargar(p) { await pestana(p, 'Confirmados'); await pestana(p, '
       return 'Analista: puede validar. Supervisor: consulta; confirmar/descartar -> 403 y sin cambios.';
     });
 
+
+  await caso('CP-CU015-13', 'La pestaña "Nuevos" explica que sirve para confirmar o descartar',
+    'En "Nuevos" se indica que son pendientes de validación y que cada una se confirma o se descarta; la fila ofrece "Validar".',
+    async () => {
+      await pestana(op, 'Nuevos');
+      const t = await op.locator('[data-testid=ayuda-nuevos]').innerText();
+      must(/pendientes de validación/i.test(t) && /confirmala/i.test(t) && /descartala/i.test(t), 'texto de ayuda incompleto: ' + t.slice(0, 120));
+      must(await op.locator('tbody tr button:has-text("Validar")').count() > 0, 'las filas pendientes no ofrecen "Validar"');
+      await pestana(op, 'Confirmados');
+      must(await op.locator('[data-testid=ayuda-nuevos]').count() === 0, 'la ayuda aparece en otra pestaña');
+      await pestana(op, 'Nuevos');
+      await op.screenshot({ path: 'evidencia/CP-CU015-13.png' });
+      return 'Banner "Nuevos = pendientes de validación" con las acciones confirmar / descartar; botón "Validar" en cada fila pendiente; la ayuda solo aparece en "Nuevos".';
+    });
+
+  await caso('CP-CU015-14', 'Procesar nuevas imágenes: el módulo de IA (simulado) genera detecciones preliminares pendientes',
+    'Se muestra el avance del análisis, se generan detecciones nuevas marcadas como SIMULADO y quedan en "Nuevos" para validar.',
+    async () => {
+      const antes = (await dets()).filter(d => d.statusType === 'nuevo').length;
+      await op.click('[data-testid=procesar-imagenes]');
+      await op.waitForSelector('[data-testid=analisis-ia]');
+      must(/Sentinel-2/.test(await op.locator('[data-testid=analisis-ia]').innerText()), 'sin pasos del análisis');
+      await op.screenshot({ path: 'evidencia/CP-CU015-14a.png' });
+      await op.waitForSelector('[data-testid=analisis-resultado]', { timeout: 20000 });
+      const t = await op.locator('[data-testid=analisis-resultado]').innerText();
+      const n = Number((/generó (\d+)/.exec(t) || [])[1]); must(n >= 3, 'no informa detecciones generadas: ' + t);
+      await op.screenshot({ path: 'evidencia/CP-CU015-14b.png' });
+      const despues = (await dets()).filter(d => d.statusType === 'nuevo');
+      must(despues.length === antes + n, `pendientes ${antes} -> ${despues.length}, esperado +${n}`);
+      const nuevas = despues.filter(d => d.location.startsWith('Zona analizada'));
+      must(nuevas.length >= n && nuevas.every(d => d.origen === 'simulado'), 'las detecciones no figuran como simuladas');
+      await op.click('[data-testid=revisar-pendientes]'); await op.waitForTimeout(600);
+      must(await op.locator('[data-testid=ayuda-nuevos]').isVisible(), 'no pasó a la pestaña Nuevos');
+      must(await op.locator('tbody tr:has-text("Zona analizada")').first().innerText().then(x => /SIMULADO/i.test(x)), 'la fila no dice SIMULADO');
+      return `El análisis generó ${n} detecciones preliminares (pendientes ${antes} -> ${despues.length}), todas marcadas SIMULADO; "Revisar pendientes" lleva a la pestaña Nuevos.`;
+    });
+
+  await caso('CP-CU015-15', 'Las detecciones generadas por el análisis se pueden validar (confirmar y descartar)',
+    'Una generada se confirma (crea foco con IRH) y otra se descarta.',
+    async () => {
+      const gen = (await dets()).filter(d => d.location.startsWith('Zona analizada') && d.statusType === 'nuevo');
+      must(gen.length >= 2, 'faltan detecciones generadas');
+      const [a, b] = gen; const f0 = await focos();
+      await pestana(op, 'Todos');
+      await fila(op, a.id).locator('button:has-text("Validar")').click(); await op.waitForSelector('[data-testid=confirmar-deteccion]');
+      await op.click('[data-testid=confirmar-deteccion]'); await op.waitForSelector('#success-dialog');
+      await op.click('#success-dialog button:has-text("Permanecer en IA")'); await op.waitForTimeout(400);
+      await fila(op, b.id).locator('button:has-text("Validar")').click(); await op.waitForSelector('[data-testid=descartar-deteccion]');
+      await op.click('[data-testid=descartar-deteccion]'); await op.click('[data-testid=confirmar-descarte]'); await op.waitForSelector('[data-testid=aviso-validacion]');
+      const da = (await dets()).find(d => d.id === a.id), db = (await dets()).find(d => d.id === b.id);
+      must(da.statusType === 'confirmado' && da.focoId && Number.isFinite(da.irh), 'la primera no quedó confirmada con IRH');
+      must(db.statusType === 'descartado', 'la segunda no quedó descartada');
+      must((await focos()) === f0 + 1, 'cantidad de focos incorrecta');
+      return `${a.id} confirmada -> foco ${da.focoId} (IRH ${da.irh}); ${b.id} descartada; se creó un solo foco.`;
+    });
+
+  await caso('CP-CU015-16', 'El supervisor no puede ejecutar el análisis',
+    'El botón "Procesar Nuevas Imágenes" está deshabilitado y la API responde 403.',
+    async () => {
+      const sup = await sesion('supervisor'); PAGS.push(sup);
+      must(await sup.locator('[data-testid=procesar-imagenes]').isDisabled(), 'el botón está habilitado');
+      must((await api('/detecciones-ia/analizar/', sup.token, 'POST', {})).status === 403, 'la API no respondió 403');
+      return 'Botón deshabilitado; API: 403.';
+    });
+
   const errs = PAGS.flatMap(p => p.errores);
-  await caso('CP-CU015-13', 'Sin errores de ejecución en la aplicación', 'No se registran excepciones en el navegador.', async () => { must(errs.length === 0, errs.join(' | ')); return 'Sin excepciones.'; });
+  await caso('CP-CU015-17', 'Sin errores de ejecución en la aplicación', 'No se registran excepciones en el navegador.', async () => { must(errs.length === 0, errs.join(' | ')); return 'Sin excepciones.'; });
 
   fs.writeFileSync('resultados-cu015.json', JSON.stringify(resultados, null, 2));
   const f = resultados.filter(r => r.resultado !== 'Pasó').length;
