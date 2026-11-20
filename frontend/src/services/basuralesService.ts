@@ -279,5 +279,5 @@ export const basuralesService = {
 export function permisosUsuario() {
   const rol = session.getUser()?.rol;
   const puedeEscribir = rol === 'administrador' || rol === 'operador' || rol === 'analista';
-  return { rol, puedeCrear: puedeEscribir, puedeEditar: puedeEscribir, puedeDarDeBaja: rol === 'administrador' };
+  return { rol, puedeCrear: puedeEscribir, puedeEditar: puedeEscribir, puedeDarDeBaja: rol === 'administrador', puedeValidarIA: puedeEscribir };
 }
