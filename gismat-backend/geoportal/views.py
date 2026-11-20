@@ -1,5 +1,7 @@
 import json
+import logging
 
+from django.db import transaction
 from django.db.models import Prefetch
 from django.http import HttpResponse
 from django.utils import timezone
@@ -467,31 +469,45 @@ class DeteccionIAViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=["post"])
     def confirmar(self, request, pk=None):
-        """Valida la detección: crea el foco, calcula su IRH y lo vincula. Idempotente."""
+        """CU015: valida la detección: crea el foco (CU005), calcula su IRH y lo vincula. Todo o nada: ante un fallo técnico
+        no queda ningún foco a medio crear y la detección permanece pendiente. Idempotente."""
         det = get_object_or_404(m.DeteccionIA, codigo=pk)
         if det.estado == "descartado":
             raise ValidationError("La detección fue descartada.")
         if det.foco_id:
             return Response(s.DeteccionSerializer(det).data)
         d = request.data
-        foco = m.Foco(
-            tipo=d.get("tipo") or det.tipo_foco or "basural", estado="pendiente", ubicacion=det.ubicacion, direccion=det.direccion,
-            volumen_m3=float(d.get("volumenM3", det.area_m2 * 0.5)), superficie_m2=det.area_m2,
-            permeabilidad=d.get("permeabilidad", "media"), creado_por=request.user,
-            observaciones=f"Detección IA {det.codigo} (confianza {det.confianza:g}%), validada por el operador."
-                          + (" [DATO DE PRUEBA: la detección es simulada, no una detección real.]" if det.origen == "simulado" else ""))
-        if d.get("tipoResiduo"):
-            foco.tipo_residuo = m.TipoResiduo.objects.filter(codigo=d["tipoResiduo"]).first()
-        recalcular(foco, motivo="alta")
-        det.foco, det.estado = foco, "confirmado"
-        det.save(update_fields=["foco", "estado"])
+        try:
+            with transaction.atomic():
+                foco = m.Foco(
+                    tipo=d.get("tipo") or det.tipo_foco or "basural", estado="pendiente", ubicacion=det.ubicacion, direccion=det.direccion,
+                    volumen_m3=float(d.get("volumenM3", det.area_m2 * 0.5)), superficie_m2=det.area_m2,
+                    permeabilidad=d.get("permeabilidad", "media"), creado_por=request.user,
+                    observaciones=f"Detección IA {det.codigo} (confianza {det.confianza:g}%), validada por el operador."
+                                  + (" [DATO DE PRUEBA: la detección es simulada, no una detección real.]" if det.origen == "simulado" else ""))
+                if d.get("tipoResiduo"):
+                    foco.tipo_residuo = m.TipoResiduo.objects.filter(codigo=d["tipoResiduo"]).first()
+                recalcular(foco, motivo="alta")
+                det.foco, det.estado = foco, "confirmado"
+                det.save(update_fields=["foco", "estado"])
+        except ValidationError:
+            raise
+        except ValueError:
+            raise ValidationError({"volumenM3": "El volumen debe ser un número."})
+        except Exception:  # CU015 6a: fallo técnico -> mensaje de error y la detección sigue pendiente
+            logging.getLogger(__name__).exception("No se pudo confirmar la detección %s", pk)
+            m.DeteccionIA.objects.filter(pk=det.pk).update(estado="nuevo", foco=None)
+            return Response({"detail": "No se pudo confirmar la detección, intente nuevamente. La detección permanece pendiente."},
+                            status=500)
         return Response(s.DeteccionSerializer(det).data)
 
     @action(detail=True, methods=["post"])
     def descartar(self, request, pk=None):
+        """CU015: descarta la detección; deja de figurar entre las pendientes. Idempotente."""
         det = get_object_or_404(m.DeteccionIA, codigo=pk)
         if det.foco_id:
             raise ValidationError("La detección ya generó un foco.")
-        det.estado = "descartado"
-        det.save(update_fields=["estado"])
+        if det.estado != "descartado":
+            det.estado = "descartado"
+            det.save(update_fields=["estado"])
         return Response(s.DeteccionSerializer(det).data)

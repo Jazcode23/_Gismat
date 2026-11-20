@@ -72,6 +72,10 @@ export interface AIDetectionItem {
   riesgo?: string | null;
   irh?: number | null;
   focoId?: string | null;
+  /** Ubicación sugerida por la IA (grados decimales) y superficie detectada: para mostrarla sobre la imagen satelital. */
+  latitud?: number;
+  longitud?: number;
+  areaM2?: number;
 }
 
 /** Foco tal como lo devuelve GET /api/focos/ (subconjunto que usan las pantallas). */
@@ -484,6 +488,13 @@ class GismatStore {
     this.notify();
   }
 
+  private async discardDetectionApi(detectionId: string): Promise<void> {
+    const det = await api<AIDetectionItem>(`/detecciones-ia/${encodeURIComponent(detectionId)}/descartar/`, { body: {} });
+    this.aiDetections = this.aiDetections.map((d) => (d.id === detectionId ? det : d));
+    await this.refreshResumen();
+    this.notify();
+  }
+
   // Actions
   public async addInterventionToFoco(
     focoId: string,
@@ -532,6 +543,17 @@ class GismatStore {
     this.notify();
   }
 
+  /** CU015: descarta la detección; deja de figurar entre las pendientes. */
+  public async discardDetection(detectionId: string): Promise<void> {
+    if (API_ENABLED) return this.discardDetectionApi(detectionId);
+    this.aiDetections = this.aiDetections.map((det) =>
+      det.id === detectionId
+        ? { ...det, statusType: 'descartado', statusText: 'Descartado', statusSub: 'Descartada por el operador', dotColor: 'bg-slate-400' }
+        : det
+    );
+    this.notify();
+  }
+
   public async confirmDetection(detectionId: string): Promise<void> {
     if (API_ENABLED) return this.confirmDetectionApi(detectionId);
     this.aiDetections = this.aiDetections.map((det) => {
@@ -575,6 +597,7 @@ export function useGismatStore() {
     addIntervention: (focoId: string, action: { title: string; desc: string; tags: string[]; cuadrilla: string; date?: string }) =>
       gismatStore.addInterventionToFoco(focoId, action),
     confirmDetection: (id: string) => gismatStore.confirmDetection(id),
+    discardDetection: (id: string) => gismatStore.discardDetection(id),
     hydrate: () => gismatStore.hydrate(),
     dashboard: gismatStore.getDashboard(),
     riesgoBasurales: gismatStore.getRiesgoBasurales(),

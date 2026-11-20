@@ -1,0 +1,106 @@
+[
+  {
+    "id": "CP-CU015-01",
+    "cu": "CU015",
+    "titulo": "Precondición y listado: se listan las detecciones pendientes con ubicación y fecha",
+    "esperado": "En la pestaña \"Nuevos\" figuran las detecciones preliminares pendientes, con su ubicación sugerida y fecha.",
+    "obtenido": "9 detecciones pendientes listadas; la fila muestra ubicación, fecha y estado \"Nuevo / Pendiente IRH\".",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-02",
+    "cu": "CU015",
+    "titulo": "Paso 3-4: se muestra la imagen satelital y la ubicación sugerida",
+    "esperado": "Al abrir la detección se ve la imagen satelital con la ubicación sugerida marcada.",
+    "obtenido": "Visor satelital con la ubicación sugerida (punto) y la superficie detectada (círculo); 6 teselas de imagen solicitadas. Coordenadas -26.8222, -65.2185.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-03",
+    "cu": "CU015",
+    "titulo": "Fecha de captura satelital visible",
+    "esperado": "Se informa la fecha de captura satelital de la detección.",
+    "obtenido": "Fecha de captura satelital: 19/11/2026 Superficie detectada: ~420 m²",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-04",
+    "cu": "CU015",
+    "titulo": "Flujo 5a: ampliar la imagen antes de decidir y volver al paso 5",
+    "esperado": "Se amplía la imagen y se consulta la fecha de captura; al cerrar vuelve la pantalla de decisión con los botones.",
+    "obtenido": "Imagen ampliada (192 px -> 680 px de alto) con fecha de captura; al cerrar vuelve a CONFIRMAR / DESCARTAR.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-05",
+    "cu": "CU015",
+    "titulo": "Paso 5-6: confirmar incorpora el foco y calcula el IRH",
+    "esperado": "La detección pasa a Confirmada, se crea el foco con IRH calculado y se informa; deja de estar pendiente.",
+    "obtenido": "Foco BR-013 creado (estado Pendiente) con IRH 43.1 (Moderado); el mensaje informa el IRH real; la detección ya no figura en \"Nuevos\".",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-06",
+    "cu": "CU015",
+    "titulo": "Confirmada: el foco queda registrado en el ABM de basurales",
+    "esperado": "El foco generado por la detección aparece en Basurales (CU005 disparado).",
+    "obtenido": "El foco BR-013 figura en el visor y en la lista de focos.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-07",
+    "cu": "CU015",
+    "titulo": "Descartar: la detección deja de figurar entre las pendientes y no se crea foco",
+    "esperado": "Se pide confirmación, la detección queda Descartada, sale de \"Nuevos\" y no se crea ningún foco.",
+    "obtenido": "Pidió confirmación, la detección quedó Descartada (persistido), salió de \"Nuevos\", figura en \"Descartados\" y no se creó ningún foco.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-08",
+    "cu": "CU015",
+    "titulo": "Descartar: se puede volver atrás sin cambios",
+    "esperado": "Al elegir \"Volver\" la detección sigue pendiente.",
+    "obtenido": "Sin cambios: la detección sigue \"Nuevo\".",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-09",
+    "cu": "CU015",
+    "titulo": "Flujo 6a: error técnico al confirmar",
+    "esperado": "Se muestra un mensaje de error y la detección permanece pendiente (sin foco creado).",
+    "obtenido": "Mensaje de error del caso de uso mostrado; la detección sigue pendiente, sin foco creado, y se puede reintentar.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-10",
+    "cu": "CU015",
+    "titulo": "Flujo 6a: tras el error se puede reintentar y la confirmación funciona",
+    "esperado": "Al reintentar sin la falla, la detección se confirma.",
+    "obtenido": "Reintento exitoso: foco BR-014, IRH 49.3.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-11",
+    "cu": "CU015",
+    "titulo": "Una detección ya resuelta no puede volver a validarse",
+    "esperado": "Al abrir una detección confirmada o descartada no se ofrecen los botones y se indica su estado.",
+    "obtenido": "Sin botones; la API rechaza confirmar una descartada (400).",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-12",
+    "cu": "CU015",
+    "titulo": "Rol Analista también puede validar; Supervisor solo consulta",
+    "esperado": "El analista confirma; el supervisor ve la detección pero no puede confirmar ni descartar (UI y API 403).",
+    "obtenido": "Analista: puede validar. Supervisor: consulta; confirmar/descartar -> 403 y sin cambios.",
+    "resultado": "Pasó"
+  },
+  {
+    "id": "CP-CU015-13",
+    "cu": "CU015",
+    "titulo": "Sin errores de ejecución en la aplicación",
+    "esperado": "No se registran excepciones en el navegador.",
+    "obtenido": "Sin excepciones.",
+    "resultado": "Pasó"
+  }
+]

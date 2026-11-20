@@ -1,10 +1,12 @@
 import { ChartMeta, EjeTitulo } from './ChartMeta';
 import { useMetadatos } from '../services/metadatos';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { MapaSatelital } from './MapaSatelital';
 import { ScreenId, TransitionType } from '../types';
 import { GismatModal } from './GismatModal';
 import { useGismatStore, AIDetectionItem } from '../services/gismatStore';
 import { API_ENABLED, descargarArchivo } from '../services/apiClient';
+import { permisosUsuario } from '../services/basuralesService';
 import {
   AVANZADOS_VACIOS, ESTADO_DE_PESTANA, NIVELES_RIESGO, NOMBRES_MES, TIPOS_FOCO, aplicarFiltros, armarArchivoLocal, calcularEstadisticas,
   consultaExportacion, contarFiltrosActivos, esSimulada, etiquetaTipo, guardarTexto, type FiltrosAvanzados, type FiltrosDeteccion,
@@ -17,8 +19,24 @@ interface ScreenAIDetectionsProps {
 
 export type DetectionItem = AIDetectionItem;
 
+const MSG_ERROR_CONFIRMAR = 'No se pudo confirmar la detección, intente nuevamente. La detección permanece pendiente.';
+const MSG_ERROR_DESCARTAR = 'No se pudo descartar la detección, intente nuevamente. La detección permanece pendiente.';
+
+/** Ubicación sugerida (grados decimales). Si el servidor no la envía numérica se lee del texto "26.8171° S, 65.2301° O". */
+function ubicacionDe(d: DetectionItem): { lat: number; lng: number } | null {
+  if (typeof d.latitud === 'number' && typeof d.longitud === 'number') return { lat: d.latitud, lng: d.longitud };
+  const m = /([\d.]+)°\s*([NS]),\s*([\d.]+)°\s*([EO])/.exec(d.coords ?? '');
+  if (!m) return null;
+  return { lat: Number(m[1]) * (m[2] === 'S' ? -1 : 1), lng: Number(m[3]) * (m[4] === 'O' ? -1 : 1) };
+}
+
+const fechaCorta = (iso: string | undefined) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso || '-';
+};
+
 export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNavigate }) => {
-  const { aiDetections: aiDetectionsRaw, confirmDetection, activeMonthName, previousMonthName } = useGismatStore();
+  const { aiDetections: aiDetectionsRaw, confirmDetection, discardDetection, activeMonthName, previousMonthName } = useGismatStore();
 
   // CORRECCIÓN: el store puede devolver undefined al inicio (antes de cargar datos)
   const meta = useMetadatos();
@@ -32,6 +50,18 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
   const [filtrosOpen, setFiltrosOpen] = useState(false);
   const [avanzados, setAvanzados] = useState<FiltrosAvanzados>(AVANZADOS_VACIOS);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // CU015: validación de la detección (confirmar / descartar), ampliar la imagen y mensajes de error
+  const [errorValidacion, setErrorValidacion] = useState('');
+  const [procesando, setProcesando] = useState(false);
+  const [confirmandoDescarte, setConfirmandoDescarte] = useState(false);
+  const [imagenAmpliada, setImagenAmpliada] = useState(false);
+  const [avisoValidacion, setAvisoValidacion] = useState('');
+  useEffect(() => {
+    if (!avisoValidacion) return;
+    const t = setTimeout(() => setAvisoValidacion(''), 7000);
+    return () => clearTimeout(t);
+  }, [avisoValidacion]);
 
   // CORRECCIÓN: el estado admite null (aiDetections[0] puede no existir todavía)
   const [selectedDetection, setSelectedDetection] = useState<DetectionItem | null>(aiDetections[0] ?? null);
@@ -70,20 +100,53 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
 
   const handleOpenDetails = (item: DetectionItem) => {
     setSelectedDetection(item);
+    setErrorValidacion('');
+    setConfirmandoDescarte(false);
     setInspectionModalOpen(true);
   };
 
+  // La detección abierta, siempre con su estado más reciente (al confirmar/descartar cambia en el store)
+  const detActual: DetectionItem | null = selectedDetection ? aiDetections.find((d) => d.id === selectedDetection.id) ?? selectedDetection : null;
+  const esPendiente = detActual?.statusType === 'nuevo';
+  const puedeValidar = !API_ENABLED || permisosUsuario().puedeValidarIA;  // el supervisor solo consulta (el servidor responde 403)
+  const ubicacion = detActual ? ubicacionDe(detActual) : null;
+
   const handleConfirmDetection = async () => {
     // CORRECCIÓN: no hacer nada si no hay detección seleccionada
-    if (!selectedDetection) return;
+    if (!selectedDetection || procesando) return;
+    setProcesando(true);
+    setErrorValidacion('');
     try {
       await confirmDetection(selectedDetection.id);
     } catch (err) {
-      window.alert((err as Error).message);
+      // CU015 6a: mensaje de error y la detección permanece pendiente (el servidor revierte todo)
+      const e = err as { status?: number; message?: string };
+      setErrorValidacion(e.status === 400 && e.message ? e.message : MSG_ERROR_CONFIRMAR);
+      setProcesando(false);
       return;
     }
+    setProcesando(false);
     setInspectionModalOpen(false);
     setSuccessDialogOpen(true);
+  };
+
+  const handleDiscardDetection = async () => {
+    if (!selectedDetection || procesando) return;
+    setProcesando(true);
+    setErrorValidacion('');
+    try {
+      await discardDetection(selectedDetection.id);
+    } catch (err) {
+      const e = err as { status?: number; message?: string };
+      setErrorValidacion(e.status === 400 && e.message ? e.message : MSG_ERROR_DESCARTAR);
+      setConfirmandoDescarte(false);
+      setProcesando(false);
+      return;
+    }
+    setProcesando(false);
+    setConfirmandoDescarte(false);
+    setInspectionModalOpen(false);
+    setAvisoValidacion(`La detección ${selectedDetection.id} fue descartada y ya no figura entre las pendientes.`);
   };
 
   return (
@@ -870,50 +933,38 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
             )}
             {/* Columna Izquierda: Visor Ortomosaico y Datos Geográficos */}
             <div className="md:col-span-7 space-y-3.5">
-              <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-800 shadow-inner relative h-48 flex flex-col justify-between p-2.5">
-                <div className="flex items-center justify-between z-10">
-                  <span className="text-[10px] font-semibold text-slate-300 flex items-center gap-1.5 bg-black/60 px-2 py-0.5 rounded">
-                    <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                      />
-                    </svg>
-                    ORTOMOSAICO SENTINEL-2 &amp; DELIMITACIÓN
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold uppercase text-slate-500">Imagen satelital y ubicación sugerida</span>
+                  {ubicacion && (
+                    <button
+                      type="button"
+                      data-testid="ampliar-imagen"
+                      className="text-[11px] font-semibold text-blue-700 hover:underline cursor-pointer"
+                      onClick={() => setImagenAmpliada(true)}
+                    >
+                      Ampliar imagen
+                    </button>
+                  )}
+                </div>
+                {ubicacion ? (
+                  <MapaSatelital testId="mapa-satelital" lat={ubicacion.lat} lng={ubicacion.lng} areaM2={selectedDetection.areaM2} height={192} />
+                ) : (
+                  <div className="h-48 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center text-xs text-slate-500">
+                    Esta detección no tiene coordenadas para mostrar la imagen.
+                  </div>
+                )}
+                <div data-testid="fecha-captura" className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 text-[11px] text-slate-700">
+                  <span>
+                    <strong>Fecha de captura satelital:</strong> {fechaCorta(selectedDetection.date)}
                   </span>
-                  <span className="text-[9px] font-mono text-slate-400 bg-black/60 px-1.5 py-0.5 rounded">Res. 10m/px</span>
+                  <span>
+                    <strong>Superficie detectada:</strong> {selectedDetection.area}
+                  </span>
                 </div>
-
-                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 220">
-                  <line opacity="0.4" stroke="#334155" strokeWidth="0.8" x1="0" x2="400" y1="70" y2="70" />
-                  <line opacity="0.4" stroke="#334155" strokeWidth="0.8" x1="0" x2="400" y1="140" y2="140" />
-                  <line opacity="0.4" stroke="#334155" strokeWidth="0.8" x1="130" x2="130" y1="0" y2="220" />
-                  <line opacity="0.4" stroke="#334155" strokeWidth="0.8" x1="260" x2="260" y1="0" y2="220" />
-
-                  <path d="M 120,160 Q 240,140 400,180" fill="none" stroke="#0284c7" strokeLinecap="round" strokeWidth="12" />
-                  <text fill="#7dd3fc" fontSize="9" fontWeight="bold" x="270" y="172">
-                    {selectedDetection.cauce ?? ''}
-                  </text>
-
-                  <polygon fill="#b91c1c" fillOpacity="0.75" points="170,140 215,138 225,170 178,172" stroke="#ef4444" strokeDasharray="3 2" strokeWidth="2" />
-                  <text fill="#ffffff" fontSize="7.5" fontWeight="bold" x="172" y="156">
-                    {selectedDetection.id ?? ''} ({selectedDetection.area ?? ''})
-                  </text>
-
-                  <line stroke="#fbbf24" strokeDasharray="3 3" strokeWidth="1.8" x1="190" x2="185" y1="138" y2="105" />
-                  <circle cx="185" cy="105" fill="#f59e0b" r="3.5" />
-                  <rect fill="#eab308" height="15" rx="3" width="55" x="175" y="88" />
-                  <text fill="#000000" fontSize="8" fontWeight="bold" x="180" y="99">
-                    {selectedDetection.distancia ?? '-'}
-                  </text>
-                </svg>
-
-                <div className="flex items-center justify-between z-10">
-                  <span className="text-[9px] text-slate-400 bg-black/60 px-2 py-0.5 rounded">Banda: NDVI / SWIR Multispectral</span>
-                  <span className="text-[9px] text-slate-400 bg-black/60 px-2 py-0.5 rounded">Paso: {selectedDetection.date ?? '-'}</span>
-                </div>
+                <p className="mt-0.5 text-[10px] leading-snug text-slate-400">
+                  Imagen aérea de referencia centrada en la ubicación sugerida por el modelo. El círculo rojo marca la superficie detectada y el punto amarillo la ubicación sugerida.
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5 text-xs">
@@ -1011,31 +1062,96 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
               </div>
 
               <div className="pt-2.5 border-t border-slate-200">
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    className="py-2 px-3 bg-[#00c853] hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
-                    onClick={handleConfirmDetection}
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                    </svg>
-                    CONFIRMAR
-                  </button>
-                  <button
-                    className="py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
-                    onClick={() => setInspectionModalOpen(false)}
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-                    </svg>
-                    DESCARTAR
-                  </button>
-                </div>
+                {errorValidacion && (
+                  <div data-testid="error-validacion" role="alert" className="mb-2.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-medium text-red-700">
+                    {errorValidacion}
+                  </div>
+                )}
+                {esPendiente && !puedeValidar ? (
+                  <p data-testid="solo-consulta" className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-medium text-slate-600">
+                    Tu rol permite consultar las detecciones, pero no confirmarlas ni descartarlas.
+                  </p>
+                ) : !esPendiente ? (
+                  <p data-testid="deteccion-resuelta" className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-medium text-slate-600">
+                    {detActual?.statusType === 'confirmado'
+                      ? `Esta detección ya fue confirmada${detActual.focoId ? ` y dio origen al foco ${detActual.focoId}` : ''}.`
+                      : 'Esta detección fue descartada y ya no está pendiente de validación.'}
+                  </p>
+                ) : confirmandoDescarte ? (
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-700 mb-2">¿Descartar esta detección? Dejará de figurar entre las pendientes.</p>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        data-testid="confirmar-descarte"
+                        disabled={procesando}
+                        className="py-2 px-3 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+                        onClick={handleDiscardDetection}
+                      >
+                        {procesando ? 'DESCARTANDO…' : 'SÍ, DESCARTAR'}
+                      </button>
+                      <button
+                        disabled={procesando}
+                        className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                        onClick={() => setConfirmandoDescarte(false)}
+                      >
+                        VOLVER
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      data-testid="confirmar-deteccion"
+                      disabled={procesando}
+                      className="py-2 px-3 bg-[#00c853] hover:bg-emerald-600 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+                      onClick={handleConfirmDetection}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                      </svg>
+                      {procesando ? 'CONFIRMANDO…' : 'CONFIRMAR'}
+                    </button>
+                    <button
+                      data-testid="descartar-deteccion"
+                      disabled={procesando}
+                      className="py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
+                      onClick={() => {
+                        setErrorValidacion('');
+                        setConfirmandoDescarte(true);
+                      }}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                      </svg>
+                      DESCARTAR
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
       </GismatModal>
+
+      {/* CU015 5a: ampliar la imagen satelital y consultar la fecha de captura antes de decidir */}
+      <GismatModal
+        isOpen={imagenAmpliada && !!ubicacion}
+        onClose={() => setImagenAmpliada(false)}
+        id="imagen-ampliada"
+        headerTheme="dark"
+        title={`Imagen satelital · ${detActual?.id ?? ''}`}
+        subtitle={`Fecha de captura satelital: ${fechaCorta(detActual?.date)} · ${detActual?.location ?? ''}`}
+        maxWidthClass="w-[94vw] max-w-5xl"
+        maxHeightClass="max-h-[92vh]"
+      >
+        {ubicacion && <MapaSatelital testId="mapa-ampliado" lat={ubicacion.lat} lng={ubicacion.lng} areaM2={detActual?.areaM2} height="68vh" zoom={18} />}
+      </GismatModal>
+
+      {avisoValidacion && (
+        <div role="status" data-testid="aviso-validacion" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] rounded-lg bg-slate-900 text-white text-xs font-medium px-4 py-2.5 shadow-xl">
+          {avisoValidacion}
+        </div>
+      )}
 
       {/* BEGIN: Success Modal Dialog (CUR 02 - P3) with Unified Width & Style */}
       <GismatModal
@@ -1055,8 +1171,10 @@ export const ScreenAIDetections: React.FC<ScreenAIDetectionsProps> = ({ onNaviga
           <h3 className="text-base font-extrabold text-slate-900">¡Foco incorporado!</h3>
           <p className="text-xs text-slate-600 mt-2 leading-relaxed">
             El foco <span className="font-bold text-slate-900">{selectedDetection?.id ?? ''} ({selectedDetection?.location ?? ''})</span> ha sido confirmado
-            e incorporado exitosamente al Geoportal. En consecuencia, se ha procedido al cálculo del Índice de Riesgo Hídrico (
-            <span className="font-bold text-red-600">IRH 0.84</span>) y a la sincronización de capas y registros de trazabilidad.
+            e incorporado exitosamente al Geoportal{detActual?.focoId ? <> como foco <span className="font-bold text-slate-900">{detActual.focoId}</span></> : null}.
+            {typeof detActual?.irh === 'number' ? (
+              <> Se calculó su Índice de Riesgo Hídrico: <span data-testid="irh-confirmado" className="font-bold text-slate-900">IRH {detActual.irh}{detActual.riesgo ? ` · ${detActual.riesgo}` : ''}</span>.</>
+            ) : null}
           </p>
           <div className="mt-5 flex items-center justify-center gap-3">
             <button

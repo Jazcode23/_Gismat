@@ -418,6 +418,7 @@ class DeteccionSerializer(serializers.ModelSerializer):
         confirmado = o.estado == "confirmado"
         return {
             "id": o.codigo, "location": o.direccion, "coords": coords_texto(o.ubicacion),
+            "latitud": round(o.ubicacion.y, 6), "longitud": round(o.ubicacion.x, 6), "areaM2": o.area_m2,
             "confidence": f"{round(o.confianza)}%", "confianzaValor": o.confianza, "area": f"~{round(o.area_m2)} m²", "date": o.fecha.isoformat(),
             # statusType: nuevo | confirmado | descartado (antes, todo lo que no era "nuevo" figuraba como "confirmado")
             "statusType": o.estado,
