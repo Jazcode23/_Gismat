@@ -196,6 +196,14 @@ class Foco(models.Model):
         super().save(*args, **kwargs)
 
     @property
+    def en_intervencion(self):
+        """Hay una intervención programada o en proceso (la más reciente) sobre un foco todavía abierto."""
+        if self.estado not in (self.Estado.ACTIVO, self.Estado.PENDIENTE):
+            return False
+        ult = next(iter(self.intervenciones.all()), None)  # más reciente primero (usa el prefetch si existe)
+        return bool(ult and ult.estado in ("programada", "en_proceso"))
+
+    @property
     def irh_provisorio(self):
         return bool(self.datos_pendientes)
 

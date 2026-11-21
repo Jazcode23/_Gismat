@@ -13,6 +13,8 @@ export interface FocoAmbiente {
   id: string;
   tipo: FocoTipo;
   estado: FocoEstado;
+  /** Intervención programada o en proceso sobre el foco: se muestra como «En intervención». */
+  enIntervencion?: boolean;
   fechaRegistro: string;
   ubicacion: string;
   barrio: string;

@@ -35,17 +35,23 @@ class AlertaCriticaTests(BaseGismat):
         # idempotente
         self.assertEqual(self.client.post(f"/api/alertas/{a['pk']}/atender/", {}, format="json").status_code, 200)
 
-    def test_atender_la_alerta_cambia_el_estado_del_foco_a_pendiente_de_intervencion(self):
+    def test_atender_la_alerta_deja_al_foco_en_intervencion(self):
         codigo = self.foco_critico()
-        self.assertEqual(m.Foco.objects.get(codigo=codigo).estado, "activo")
         self.login_as("supervisor")
+        self.assertFalse(self.client.get(f"/api/focos/{codigo}/").json()["enIntervencion"])
         a = next(x for x in self.client.get("/api/geoportal/alertas").json() if x["focoId"] == codigo)
         self.client.post(f"/api/alertas/{a['pk']}/atender/", {}, format="json")
-        self.assertEqual(m.Foco.objects.get(codigo=codigo).estado, "pendiente")
-        # al repetir la acción no cambia nada ni se vuelve a emitir la alerta
+        self.assertTrue(self.client.get(f"/api/focos/{codigo}/").json()["enIntervencion"])
+        self.assertEqual(m.Foco.objects.get(codigo=codigo).intervenciones.count(), 1)
+        visor = next(x for x in self.client.get("/api/geoportal/focos").json() if x["id"] == codigo)
+        self.assertTrue(visor["enIntervencion"])   # también en el visor geográfico
+        # repetir la acción no duplica la intervención ni vuelve a emitir la alerta
         self.client.post(f"/api/alertas/{a['pk']}/atender/", {}, format="json")
-        self.assertEqual(m.Foco.objects.get(codigo=codigo).estado, "pendiente")
+        self.assertEqual(m.Foco.objects.get(codigo=codigo).intervenciones.count(), 1)
         self.assertFalse(any(x["focoId"] == codigo for x in self.client.get("/api/geoportal/alertas").json()))
+        # Trazabilidad lo muestra como intervención en curso
+        t = next(x for x in self.client.get("/api/trazabilidad/focos/").json() if x["id"] == codigo)
+        self.assertEqual(t["statusBadge"], "Intervención en Curso")
 
     def test_operador_y_analista_no_pueden_marcar_alertas_como_atendidas(self):
         codigo = self.foco_critico()
@@ -72,6 +78,8 @@ class SeguimientoAlertasTests(BaseGismat):
         a = m.Alerta.objects.get(foco__codigo=codigo)
         self.client.post(f"/api/alertas/{a.pk}/atender/", {}, format="json")
         self.assertEqual(alertas.revisar(self.ahora + self.timedelta(days=1)), [])        # todavía es pronto
+        self.assertEqual(alertas.revisar(self.ahora + self.timedelta(days=4)), [])        # en intervención: no se insiste
+        m.Intervencion.objects.filter(foco__codigo=codigo).update(estado="completada")    # se terminó y el foco sigue crítico
         nuevas = alertas.revisar(self.ahora + self.timedelta(days=4))                     # pasaron más de 3 días
         self.assertEqual(len(nuevas), 1)
         self.assertEqual(nuevas[0].nivel, "critica")

@@ -62,6 +62,8 @@ export interface Basural {
   proximaAccionRecomendada: string;
   datosPendientes: string[];
   irhProvisorio: boolean;
+  /** Hay una intervención programada o en proceso sobre el foco (por ejemplo, al atender su alerta). */
+  enIntervencion?: boolean;
   totalIntervenciones: number;
   alertasActivas: number;
   fechaActualizacion: string;

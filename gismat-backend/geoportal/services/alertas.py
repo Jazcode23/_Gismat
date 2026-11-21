@@ -109,10 +109,10 @@ def revisar(ahora=None):
     espera = timedelta(days=settings.ALERTA_SEGUIMIENTO_DIAS)
     creadas = []
     focos = Foco.objects.filter(estado__in=[Foco.Estado.ACTIVO, Foco.Estado.PENDIENTE], irh__gte=settings.IRH_UMBRAL_CRITICO)
-    for f in focos.select_related("curso_cercano", "microcuenca", "tipo_residuo"):
+    for f in focos.select_related("curso_cercano", "microcuenca", "tipo_residuo").prefetch_related("intervenciones"):
         previas = list(f.alertas.filter(nivel__in=[Alerta.Nivel.CRITICA, Alerta.Nivel.ADVERTENCIA]))
-        if any(a.estado == Alerta.Estado.ACTIVA for a in previas):
-            continue
+        if any(a.estado == Alerta.Estado.ACTIVA for a in previas) or f.en_intervencion:
+            continue  # ya hay alerta activa, o el foco ya se está interviniendo
         if not previas:
             nueva = evaluar(f)
         else:

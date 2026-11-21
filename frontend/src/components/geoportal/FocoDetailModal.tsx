@@ -26,6 +26,9 @@ export const FocoDetailModal: React.FC<FocoDetailModalProps> = ({
   };
 
   const getEstadoBadge = (estado: string) => {
+    if (foco.enIntervencion && (estado === 'activo' || estado === 'pendiente')) {
+      return <span data-testid="estado-en-intervencion" className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase bg-blue-100 text-blue-800 border border-blue-200">En intervención</span>;
+    }
     switch (estado) {
       case 'activo':
         return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase bg-red-100 text-red-800 border border-red-200">Activo</span>;
