@@ -447,7 +447,7 @@ export const GeoportalMap: React.FC<GeoportalMapProps> = ({
           <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 8px;">
             <strong style="color: #0f172a; font-size: 13px;">${foco.id}</strong>
             <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; background: ${color}20; color: ${color}; padding: 2px 6px; border-radius: 9999px;">
-              ${foco.estado}
+              ${foco.enIntervencion && (foco.estado === 'activo' || foco.estado === 'pendiente') ? 'en intervención' : foco.estado}
             </span>
           </div>
 

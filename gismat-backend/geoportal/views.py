@@ -223,18 +223,27 @@ class AlertaViewSet(viewsets.ReadOnlyModelViewSet):
                 qs = qs.filter(**{filtro: v})
         return qs
 
+    @staticmethod
+    def _iniciar_intervencion(foco, usuario):
+        """Atender la alerta significa que el foco pasa a intervenirse: queda 'En intervención' (intervención en proceso).
+        Se crea directamente (sin recalcular el IRH) para no volver a emitir la misma alerta. Idempotente."""
+        if foco.estado not in (m.Foco.Estado.ACTIVO, m.Foco.Estado.PENDIENTE) or foco.en_intervencion:
+            return
+        m.Intervencion.objects.create(
+            foco=foco, tipo="Intervención iniciada desde alerta", responsable=usuario, estado=m.Intervencion.Estado.EN_PROCESO,
+            observaciones="Alerta marcada como atendida por el Supervisor.", etiquetas=["Alerta atendida"],
+            irh_antes=foco.irh)
+
     @action(detail=True, methods=["post"])
     def atender(self, request, pk=None):
         """CU016/CU018: el Supervisor marca la alerta como atendida (deja de figurar entre las activas) y el foco pasa a
-        'Pendiente de intervención'. Idempotente."""
+        'En intervención'. Idempotente."""
         a = self.get_object()
         if a.estado != "atendida":
             a.estado = "atendida"
             a.atendida_en = timezone.now()
             a.save(update_fields=["estado", "atendida_en"])
-            # Atender la alerta significa que el foco pasa a intervenirse: un foco Activo queda "Pendiente de intervención".
-            # (update() directo: no recalcula el IRH, así que no se vuelve a emitir la misma alerta).
-            m.Foco.objects.filter(pk=a.foco_id, estado=m.Foco.Estado.ACTIVO).update(estado=m.Foco.Estado.PENDIENTE)
+            self._iniciar_intervencion(a.foco, request.user)
         return Response(s.AlertaSerializer(a).data)
 
 

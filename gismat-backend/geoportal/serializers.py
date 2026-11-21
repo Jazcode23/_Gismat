@@ -200,6 +200,7 @@ class FocoSerializer(serializers.ModelSerializer):
     fechaActualizacion = serializers.DateTimeField(source="fecha_actualizacion", read_only=True)
     datosPendientes = serializers.JSONField(source="datos_pendientes", read_only=True)
     irhProvisorio = serializers.BooleanField(source="irh_provisorio", read_only=True)
+    enIntervencion = serializers.BooleanField(source="en_intervencion", read_only=True)
     totalIntervenciones = serializers.SerializerMethodField()
     alertasActivas = serializers.SerializerMethodField()
 
@@ -209,7 +210,7 @@ class FocoSerializer(serializers.ModelSerializer):
                   "irh", "nivelRiesgo", "distanciaCursoAgua", "cursoAguaCercano", "microcuencaId", "volumenEstimado",
                   "volumenM3", "permeabilidad", "permeabilidadDetalle", "permeabilidadSuelo", "observaciones",
                   "ultimaIntervencion", "proximaAccionRecomendada", "superficieM2", "tipoResiduo", "foto",
-                  "fechaActualizacion", "totalIntervenciones", "alertasActivas", "datosPendientes", "irhProvisorio"]
+                  "fechaActualizacion", "totalIntervenciones", "alertasActivas", "datosPendientes", "irhProvisorio", "enIntervencion"]
         read_only_fields = ["irh"]
 
     # ---- lectura
@@ -366,8 +367,10 @@ def foco_a_trace(f):
         k = "inactivo"
     elif f.estado == "limpiado":
         k = "recuperado"
-    elif ints and ints[0].estado in ("programada", "en_proceso"):
+    elif ints and ints[0].estado == "programada":
         k = "cuadrilla"
+    elif ints and ints[0].estado == "en_proceso":
+        k = "curso"
     elif ints:
         k = "curso"
     else:

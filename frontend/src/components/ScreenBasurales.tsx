@@ -33,6 +33,9 @@ const ESTADO_ESTILO: Record<string, string> = {
   limpiado: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   inactivo: 'bg-slate-100 text-slate-500 border-slate-200',
 };
+const EN_INTERVENCION_ESTILO = 'bg-blue-50 text-blue-700 border-blue-200';
+const estadoEstilo = (b: { estado: string; enIntervencion?: boolean }) => (b.enIntervencion ? EN_INTERVENCION_ESTILO : ESTADO_ESTILO[b.estado]);
+const estadoTexto = (b: { estado: string; enIntervencion?: boolean }) => (b.enIntervencion ? 'En intervención' : ESTADO_TXT[b.estado]);
 const ESTADO_TXT: Record<string, string> = {
   activo: 'Activo',
   pendiente: 'Pendiente',
@@ -448,7 +451,7 @@ export const ScreenBasurales: React.FC<ScreenBasuralesProps> = ({ onNavigate }) 
                         </td>
                         <td className="px-4 py-3">{TIPO_TXT[b.tipo] || b.tipo}</td>
                         <td className="px-4 py-3">
-                          <span className={`inline-block border rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${ESTADO_ESTILO[b.estado]}`}>{ESTADO_TXT[b.estado]}</span>
+                          <span className={`inline-block border rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${estadoEstilo(b)}`} data-testid="estado-foco">{estadoTexto(b)}</span>
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-block border rounded-md px-2 py-0.5 text-[11px] font-bold ${baja ? ESTADO_ESTILO.inactivo : NIVEL_ESTILO[b.nivelRiesgo]}`}>
@@ -704,7 +707,7 @@ export const ScreenBasurales: React.FC<ScreenBasuralesProps> = ({ onNavigate }) 
             {errorDetalle && <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-3 py-2">{errorDetalle}</div>}
 
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`inline-block border rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${ESTADO_ESTILO[detalle.estado]}`}>{ESTADO_TXT[detalle.estado]}</span>
+              <span className={`inline-block border rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${estadoEstilo(detalle)}`} data-testid="estado-foco-detalle">{estadoTexto(detalle)}</span>
               {Number.isFinite(detalle.irh) ? (
                 <span className={`inline-block border rounded-md px-2 py-0.5 text-[11px] font-bold ${NIVEL_ESTILO[detalle.nivelRiesgo]}`}>
                   IRH {detalle.irh} / 100 · {detalle.nivelRiesgo}
