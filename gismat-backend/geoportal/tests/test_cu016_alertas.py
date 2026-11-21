@@ -35,6 +35,18 @@ class AlertaCriticaTests(BaseGismat):
         # idempotente
         self.assertEqual(self.client.post(f"/api/alertas/{a['pk']}/atender/", {}, format="json").status_code, 200)
 
+    def test_atender_la_alerta_cambia_el_estado_del_foco_a_pendiente_de_intervencion(self):
+        codigo = self.foco_critico()
+        self.assertEqual(m.Foco.objects.get(codigo=codigo).estado, "activo")
+        self.login_as("supervisor")
+        a = next(x for x in self.client.get("/api/geoportal/alertas").json() if x["focoId"] == codigo)
+        self.client.post(f"/api/alertas/{a['pk']}/atender/", {}, format="json")
+        self.assertEqual(m.Foco.objects.get(codigo=codigo).estado, "pendiente")
+        # al repetir la acción no cambia nada ni se vuelve a emitir la alerta
+        self.client.post(f"/api/alertas/{a['pk']}/atender/", {}, format="json")
+        self.assertEqual(m.Foco.objects.get(codigo=codigo).estado, "pendiente")
+        self.assertFalse(any(x["focoId"] == codigo for x in self.client.get("/api/geoportal/alertas").json()))
+
     def test_operador_y_analista_no_pueden_marcar_alertas_como_atendidas(self):
         codigo = self.foco_critico()
         pk = m.Alerta.objects.filter(foco__codigo=codigo).first().pk
