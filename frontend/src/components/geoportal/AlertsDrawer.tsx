@@ -43,7 +43,7 @@ export const AlertsDrawer: React.FC<AlertsDrawerProps> = ({
     try {
       await onAtender(a);
       setAvisoAtender(`Alerta marcada como atendida. El foco ${a.focoId} pasó a «Pendiente de intervención».`);
-      setTimeout(() => setAvisoAtender(''), 6000);
+      setTimeout(() => setAvisoAtender(''), 10000);
     } catch {
       setErrorAtender('No se pudo marcar la alerta como atendida, intente nuevamente.');
     } finally {
