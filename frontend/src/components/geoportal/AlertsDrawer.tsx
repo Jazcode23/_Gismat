@@ -31,6 +31,7 @@ export const AlertsDrawer: React.FC<AlertsDrawerProps> = ({
 }) => {
   const [atendiendo, setAtendiendo] = React.useState<string | null>(null);
   const [errorAtender, setErrorAtender] = React.useState('');
+  const [avisoAtender, setAvisoAtender] = React.useState('');
   if (!isOpen) return null;
 
   const ordenadas = [...alertas].sort((a, b) => (ORDEN_NIVEL[a.nivel] ?? 9) - (ORDEN_NIVEL[b.nivel] ?? 9) || b.fecha.localeCompare(a.fecha));
@@ -38,8 +39,11 @@ export const AlertsDrawer: React.FC<AlertsDrawerProps> = ({
     if (!onAtender) return;
     setAtendiendo(a.id);
     setErrorAtender('');
+    setAvisoAtender('');
     try {
       await onAtender(a);
+      setAvisoAtender(`Alerta marcada como atendida. El foco ${a.focoId} pasó a «Pendiente de intervención».`);
+      setTimeout(() => setAvisoAtender(''), 6000);
     } catch {
       setErrorAtender('No se pudo marcar la alerta como atendida, intente nuevamente.');
     } finally {
@@ -90,6 +94,11 @@ export const AlertsDrawer: React.FC<AlertsDrawerProps> = ({
 
         {/* Alerts List */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {avisoAtender && (
+            <div role="status" data-testid="aviso-atendida" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800 flex items-center gap-2">
+              <i className="fa-solid fa-circle-check text-emerald-600"></i>{avisoAtender}
+            </div>
+          )}
           {errorAtender && (
             <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-medium text-red-700">{errorAtender}</div>
           )}
