@@ -215,6 +215,7 @@ class AlertaViewSet(viewsets.ReadOnlyModelViewSet):
     acciones = {"list": "ver", "retrieve": "ver", "atender": "atender_alerta"}
 
     def get_queryset(self):
+        srv_alertas.revisar_si_corresponde()  # emite las alertas que correspondan (seguimiento de focos sin intervenir)
         qs = m.Alerta.objects.select_related("foco", "microcuenca")
         p = self.request.query_params
         for campo, filtro in (("nivel", "nivel"), ("estado", "estado"), ("tipo", "tipo"), ("foco", "foco__codigo")):
@@ -229,7 +230,8 @@ class AlertaViewSet(viewsets.ReadOnlyModelViewSet):
         a = self.get_object()
         if a.estado != "atendida":
             a.estado = "atendida"
-            a.save(update_fields=["estado"])
+            a.atendida_en = timezone.now()
+            a.save(update_fields=["estado", "atendida_en"])
             # Atender la alerta significa que el foco pasa a intervenirse: un foco Activo queda "Pendiente de intervención".
             # (update() directo: no recalcula el IRH, así que no se vuelve a emitir la misma alerta).
             m.Foco.objects.filter(pk=a.foco_id, estado=m.Foco.Estado.ACTIVO).update(estado=m.Foco.Estado.PENDIENTE)
@@ -368,6 +370,7 @@ class GeoportalViewSet(viewsets.ViewSet):
         return Response(s.BarrioSerializer(m.Barrio.objects.order_by("id"), many=True).data)
 
     def alertas(self, request):
+        srv_alertas.revisar_si_corresponde()
         qs = m.Alerta.objects.select_related("foco", "microcuenca").exclude(estado="atendida", nivel__in=["critica", "advertencia"])
         return Response(s.AlertaSerializer(qs, many=True).data)
 

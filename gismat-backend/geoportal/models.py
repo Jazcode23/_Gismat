@@ -277,6 +277,7 @@ class Alerta(models.Model):
     recomendacion = models.TextField(blank=True)
     estado = models.CharField(max_length=10, choices=Estado.choices, default=Estado.ACTIVA, db_index=True)
     fecha = models.DateTimeField(default=timezone.now, db_index=True)
+    atendida_en = models.DateTimeField(null=True, blank=True)  # cuándo el Supervisor la marcó como atendida
 
     class Meta:
         ordering = ["-fecha"]

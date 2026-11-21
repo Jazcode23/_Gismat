@@ -54,3 +54,39 @@ class AlertaCriticaTests(BaseGismat):
             self.login_as(rol)
             self.assertEqual(self.client.post(f"/api/alertas/{pk}/atender/", {}, format="json").status_code, 403, rol)
         self.assertEqual(m.Alerta.objects.get(pk=pk).estado, "activa")
+
+
+class SeguimientoAlertasTests(BaseGismat):
+    def setUp(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        self.timedelta, self.ahora = timedelta, timezone.now()
+
+    def foco_critico(self):
+        return self.crear_foco(estado="activo", volumenM3=900)["id"]
+
+    def test_foco_critico_atendido_vuelve_a_alertar_si_sigue_sin_intervenirse(self):
+        from geoportal.services import alertas
+        codigo = self.foco_critico()
+        self.login_as("supervisor")
+        a = m.Alerta.objects.get(foco__codigo=codigo)
+        self.client.post(f"/api/alertas/{a.pk}/atender/", {}, format="json")
+        self.assertEqual(alertas.revisar(self.ahora + self.timedelta(days=1)), [])        # todavía es pronto
+        nuevas = alertas.revisar(self.ahora + self.timedelta(days=4))                     # pasaron más de 3 días
+        self.assertEqual(len(nuevas), 1)
+        self.assertEqual(nuevas[0].nivel, "critica")
+        self.assertIn("Seguimiento", nuevas[0].titulo)
+        self.assertEqual(alertas.revisar(self.ahora + self.timedelta(days=4)), [])        # sin duplicados mientras haya una activa
+
+    def test_foco_limpiado_no_genera_alertas_de_seguimiento(self):
+        from geoportal.services import alertas
+        codigo = self.foco_critico()
+        m.Alerta.objects.filter(foco__codigo=codigo).update(estado="atendida")
+        m.Foco.objects.filter(codigo=codigo).update(estado="limpiado")
+        self.assertEqual(alertas.revisar(self.ahora + self.timedelta(days=30)), [])
+
+    def test_foco_alto_que_nunca_tuvo_alerta_la_recibe_en_la_revision(self):
+        from geoportal.services import alertas
+        codigo = self.foco_critico()
+        m.Alerta.objects.filter(foco__codigo=codigo).delete()
+        self.assertEqual(len(alertas.revisar(self.ahora)), 1)

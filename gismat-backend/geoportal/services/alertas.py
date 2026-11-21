@@ -3,7 +3,10 @@
 Los textos hablan de RIESGO y POSIBILIDAD de afectación; no afirman contaminación química
 real del agua (directiva técnica del proyecto).
 """
+from datetime import timedelta
+
 from django.conf import settings
+from django.utils import timezone
 
 from ..models import Alerta, Foco
 
@@ -81,3 +84,56 @@ def evaluar(foco, nivel_anterior=None):
             mensaje=f"El IRH del foco {foco.codigo} bajó por debajo del umbral crítico tras la intervención.",
             recomendacion="Inspección periódica de mantenimiento preventivo para evitar reincidencia.")
     return None
+
+
+def _crear_seguimiento(foco, dias):
+    curso = foco.curso_cercano.nombre if foco.curso_cercano else "curso de agua"
+    estado_txt = "sigue pendiente de intervención" if foco.estado == Foco.Estado.PENDIENTE else "sigue activo sin intervención"
+    return Alerta.objects.create(
+        foco=foco, microcuenca=foco.microcuenca, tipo=Alerta.Tipo.IRH, nivel=Alerta.Nivel.CRITICA,
+        titulo=f"Seguimiento: el foco {foco.codigo} {estado_txt} hace {dias} días (IRH {foco.irh:g})",
+        mensaje=(f"El foco {foco.codigo} ({foco.direccion}) mantiene un IRH de {foco.irh:g}, por encima del umbral crítico de "
+                 f"{settings.IRH_UMBRAL_CRITICO:g}, y no se registró una intervención en los últimos {dias} días. "
+                 f"Persiste el riesgo de arrastre de residuos hacia {curso}."),
+        recomendacion="Reprogramar la intervención con prioridad; " + recomendacion_para(foco)[0].lower() + recomendacion_para(foco)[1:])
+
+
+def revisar(ahora=None):
+    """Revisión periódica de todos los focos abiertos con IRH alto. Devuelve las alertas creadas.
+
+    - Foco alto que nunca tuvo alerta (p. ej. cargado por importación): se emite la alerta correspondiente.
+    - Foco alto sin alerta activa y que sigue sin intervenirse pasados ALERTA_SEGUIMIENTO_DIAS desde su última alerta
+      (emitida o atendida): se emite una alerta de seguimiento. Si no, no se repite (evita duplicados).
+    """
+    ahora = ahora or timezone.now()
+    espera = timedelta(days=settings.ALERTA_SEGUIMIENTO_DIAS)
+    creadas = []
+    focos = Foco.objects.filter(estado__in=[Foco.Estado.ACTIVO, Foco.Estado.PENDIENTE], irh__gte=settings.IRH_UMBRAL_CRITICO)
+    for f in focos.select_related("curso_cercano", "microcuenca", "tipo_residuo"):
+        previas = list(f.alertas.filter(nivel__in=[Alerta.Nivel.CRITICA, Alerta.Nivel.ADVERTENCIA]))
+        if any(a.estado == Alerta.Estado.ACTIVA for a in previas):
+            continue
+        if not previas:
+            nueva = evaluar(f)
+        else:
+            ultima = max(max(a.fecha, a.atendida_en or a.fecha) for a in previas)
+            if ahora - ultima < espera:
+                continue
+            dias = max(1, (ahora - ultima).days)
+            nueva = _crear_provisoria(f) if f.irh_provisorio else _crear_seguimiento(f, dias)
+        if nueva:
+            creadas.append(nueva)
+    return creadas
+
+
+_ultima_revision = None
+
+
+def revisar_si_corresponde(cada_segundos=60):
+    """Ejecuta revisar() como mucho una vez por minuto; se llama al consultar las alertas (sin tarea programada)."""
+    global _ultima_revision
+    ahora = timezone.now()
+    if _ultima_revision and (ahora - _ultima_revision).total_seconds() < cada_segundos:
+        return []
+    _ultima_revision = ahora
+    return revisar(ahora)
