@@ -169,6 +169,8 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 # ---------------------------------------------------------------- GISMAT
 IRH_UMBRAL_MODERADO = float(os.environ.get("IRH_UMBRAL_MODERADO", "40"))
 IRH_UMBRAL_CRITICO = float(os.environ.get("IRH_UMBRAL_CRITICO", "70"))
+# Días sin intervenir un foco crítico (desde su última alerta emitida o atendida) tras los cuales se emite una alerta de seguimiento
+ALERTA_SEGUIMIENTO_DIAS = float(os.environ.get("ALERTA_SEGUIMIENTO_DIAS", "3"))
 # Caja geográfica válida para registrar focos (San Miguel de Tucumán y alrededores): lng_min, lat_min, lng_max, lat_max
 GISMAT_BBOX = (-65.45, -27.00, -65.00, -26.60)
 # Densidad media usada para convertir m³ <-> toneladas (deducida de los datos municipales del frontend)
