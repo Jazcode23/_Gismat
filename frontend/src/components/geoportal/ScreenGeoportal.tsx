@@ -314,6 +314,11 @@ export const ScreenGeoportal: React.FC<ScreenGeoportalProps> = ({ onNavigate }) 
           if (a.pk === undefined) return;
           await geoportalService.atenderAlerta(a.pk);
           setAlertas(await geoportalService.getAlertas());
+          // el foco pasó a 'Pendiente de intervención': se refresca el mapa y el detalle
+          const focosActualizados = await geoportalService.getFocos(filters);
+          setAllFocos(focosActualizados);
+          setFilteredFocos(await geoportalService.getFocos(filters));
+          setSelectedFoco((prev) => (prev ? focosActualizados.find((f) => f.id === prev.id) ?? prev : prev));
         }}
         onSelectAlertaFoco={(focoId, coords) => {
           if (coords) {

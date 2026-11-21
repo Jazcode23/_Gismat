@@ -224,11 +224,15 @@ class AlertaViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=["post"])
     def atender(self, request, pk=None):
-        """CU016/CU018: el Supervisor marca la alerta como atendida (deja de figurar entre las activas). Idempotente."""
+        """CU016/CU018: el Supervisor marca la alerta como atendida (deja de figurar entre las activas) y el foco pasa a
+        'Pendiente de intervención'. Idempotente."""
         a = self.get_object()
         if a.estado != "atendida":
             a.estado = "atendida"
             a.save(update_fields=["estado"])
+            # Atender la alerta significa que el foco pasa a intervenirse: un foco Activo queda "Pendiente de intervención".
+            # (update() directo: no recalcula el IRH, así que no se vuelve a emitir la misma alerta).
+            m.Foco.objects.filter(pk=a.foco_id, estado=m.Foco.Estado.ACTIVO).update(estado=m.Foco.Estado.PENDIENTE)
         return Response(s.AlertaSerializer(a).data)
 
 
